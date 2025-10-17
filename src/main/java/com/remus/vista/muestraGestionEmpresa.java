@@ -12,6 +12,8 @@ import com.remus.modelo.Cliente;
 import com.remus.modelo.Empresa;
 import com.remus.modelo.Producto;
 import com.remus.modelo.Venta;
+import com.remus.utility.PanelGestionVentas;
+import com.remus.utility.PanelReportes;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -50,7 +52,7 @@ public class muestraGestionEmpresa extends JFrame {
     public muestraGestionEmpresa() {
         setTitle("Sistema de Gestión - GUI");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(900, 600);
+        setSize(1200, 700);
         setLocationRelativeTo(null);
 
         final JTabbedPane tabs = new JTabbedPane();
@@ -58,6 +60,7 @@ public class muestraGestionEmpresa extends JFrame {
         tabs.addTab("Empresas", crearPanelEmpresas());
         tabs.addTab("Productos", crearPanelProductos());
         tabs.addTab("Ventas", crearPanelVentas());
+        tabs.addTab("Reportes", new PanelReportes());  // ← NUEVA PESTAÑA
 
         add(tabs);
 
@@ -271,36 +274,13 @@ public class muestraGestionEmpresa extends JFrame {
 
     // ---------------- PANEL VENTAS ----------------
     private JPanel crearPanelVentas() {
-        JPanel panel = new JPanel(new BorderLayout(10,10));
-        panel.setBorder(new EmptyBorder(10,10,10,10));
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        JPanel left = new JPanel(new BorderLayout(5,5));
-        left.add(new JLabel("Lista de Ventas:"), BorderLayout.NORTH);
-        listVentas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        left.add(new JScrollPane(listVentas), BorderLayout.CENTER);
-        JButton btnRef = new JButton("Refrescar"); btnRef.addActionListener(e -> recargarVentas());
-        left.add(btnRef, BorderLayout.SOUTH);
+        // Usar el panel de gestión de ventas personalizado
+        JPanel panelGestion = new PanelGestionVentas(this);
+        panel.add(panelGestion, BorderLayout.CENTER);
 
-        panel.add(left, BorderLayout.WEST);
-
-        JPanel right = new JPanel(new BorderLayout(5,5));
-        JTextArea detalles = new JTextArea(); detalles.setEditable(false);
-        right.add(new JLabel("Detalles de venta seleccionada:"), BorderLayout.NORTH);
-        right.add(new JScrollPane(detalles), BorderLayout.CENTER);
-
-        listVentas.addListSelectionListener(e -> {
-            Venta v = listVentas.getSelectedValue();
-            if (v != null) {
-                // Mostrar información útil; como fallback usamos toString
-                String detalle = v + "\n\n" +
-                        "Cliente: " + (v.getCliente() != null ? v.getCliente().getNombreCompleto() : "N/A") + "\n" +
-                        "Fecha: " + v.getFechaVenta() + "\n" +
-                        "Importe total: " + v.getImporteTotal() + "\n";
-                detalles.setText(detalle);
-            } else detalles.setText("");
-        });
-
-        panel.add(right, BorderLayout.CENTER);
         return panel;
     }
 
