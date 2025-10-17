@@ -119,7 +119,7 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
         lv.setIdProducto(rs.getInt("id_producto"));
         lv.setCantidad(rs.getInt("cantidad"));
         lv.setPrecioVenta(rs.getDouble("precio_venta"));
-        lv.setDescuento(rs.getInt("descuento"));
+        lv.setDescuento(rs.getInt("descuento_linea"));
         lv.setImporteLinea(rs.getDouble("importe_linea"));
         return lv;
     }

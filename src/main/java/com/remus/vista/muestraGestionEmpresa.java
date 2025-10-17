@@ -157,7 +157,11 @@ public class muestraGestionEmpresa extends JFrame {
         JPanel left = new JPanel(new BorderLayout(5,5));
         left.add(new JLabel("Lista de Empresas:"), BorderLayout.NORTH);
         listEmpresas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        left.add(new JScrollPane(listEmpresas), BorderLayout.CENTER);
+        // Limitamos el número de filas visibles y fijamos un tamaño preferido para que no expanda el panel central
+        listEmpresas.setVisibleRowCount(10);
+        JScrollPane empresasScroll = new JScrollPane(listEmpresas);
+        empresasScroll.setPreferredSize(new Dimension(260, 300)); // ancho fijo para la lista
+        left.add(empresasScroll, BorderLayout.CENTER);
         JButton btnRef = new JButton("Refrescar"); btnRef.addActionListener(e -> recargarEmpresas());
         left.add(btnRef, BorderLayout.SOUTH);
 

@@ -176,7 +176,7 @@ public class ProductoDAOImpl implements IProductoDAO {
 
         String fecha = rs.getString("fecha_creacion");
         if (fecha != null) {
-            p.setFechaCreacion(LocalDateTime.parse(fecha));
+            p.setFechaCreacion(fecha);
         }
 
         return p;

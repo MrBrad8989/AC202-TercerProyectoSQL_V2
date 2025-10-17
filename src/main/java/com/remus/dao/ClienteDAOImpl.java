@@ -32,7 +32,7 @@ public class ClienteDAOImpl implements IClienteDAO {
     @Override
         public List<Cliente> obtenerTodos() {
             List<Cliente> Clientes = new ArrayList<>();
-            String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo FROM CLIENTES ORDER BY id_Cli";
+            String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo FROM CLIENTES ORDER BY id_cliente";
 
             try (Statement stmt = ConexionBD.getConexion().createStatement();
                  ResultSet rs = stmt.executeQuery(sql)) {

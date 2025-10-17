@@ -14,7 +14,7 @@ public class Producto {
     private Integer stock;
     private Integer stockMinimo;
     private Boolean activo;
-    private LocalDateTime fechaCreacion;
+    private String fechaCreacion;
 
     public Producto(String codigo, String descripcion, Double precioRecomendado,
                     Integer stock, Integer stockMinimo) {
