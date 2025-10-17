@@ -47,7 +47,8 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
 
     @Override
     public boolean insertar(LineaVenta lineaVenta) {
-        String sql = "INSERT INTO LINEAS_VENTA (id_venta, id_producto, cantidad, precio_venta, descuento, importe_linea) " +
+        // Usar la columna correcta descuento_linea
+        String sql = "INSERT INTO LINEAS_VENTA (id_venta, id_producto, cantidad, precio_venta, descuento_linea, importe_linea) " +
                 "VALUES (?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
@@ -66,7 +67,8 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
 
     @Override
     public boolean actualizar(LineaVenta lineaVenta) {
-        String sql = "UPDATE LINEAS_VENTA SET id_venta = ?, id_producto = ?, cantidad = ?, precio_venta = ?, descuento = ?, importe_linea = ? " +
+        // Usar la columna correcta descuento_linea
+        String sql = "UPDATE LINEAS_VENTA SET id_venta = ?, id_producto = ?, cantidad = ?, precio_venta = ?, descuento_linea = ?, importe_linea = ? " +
                 "WHERE id_linea = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {

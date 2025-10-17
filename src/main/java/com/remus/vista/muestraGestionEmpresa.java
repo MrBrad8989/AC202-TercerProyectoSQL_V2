@@ -60,7 +60,7 @@ public class muestraGestionEmpresa extends JFrame {
         tabs.addTab("Empresas", crearPanelEmpresas());
         tabs.addTab("Productos", crearPanelProductos());
         tabs.addTab("Ventas", crearPanelVentas());
-        tabs.addTab("Reportes", new PanelReportes());  // ← NUEVA PESTAÑA
+        tabs.addTab("Reportes", new PanelReportes());
 
         add(tabs);
 

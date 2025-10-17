@@ -271,12 +271,12 @@ public class PanelGestionVentas extends JPanel {
 
         // Botones de acción
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 5));
-        btnConfirmarVenta = new JButton("✓ Confirmar Venta");
+        btnConfirmarVenta = new JButton("Confirmar Venta");
         btnConfirmarVenta.setForeground(new Color(0, 100, 0));
         btnConfirmarVenta.setFont(new Font("Arial", Font.BOLD, 12));
         btnConfirmarVenta.addActionListener(e -> confirmarVenta());
 
-        btnCancelar = new JButton("✗ Cancelar");
+        btnCancelar = new JButton("Cancelar");
         btnCancelar.setForeground(new Color(200, 0, 0));
         btnCancelar.addActionListener(e -> cancelarVenta());
 

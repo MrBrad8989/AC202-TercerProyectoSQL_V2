@@ -71,7 +71,7 @@ public class ConsultasService {
         Map<Integer, Map<String, Object>> ventas = new LinkedHashMap<>();
         String sql = "SELECT v.id_venta, v.fecha_venta, c.id_cliente, c.nombre, c.apellidos, " +
                 "v.descuento_global, v.importe_total, lv.id_linea, p.codigo, p.descripcion, " +
-                "lv.cantidad, lv.precio_venta, lv.descuento, lv.importe_linea " +
+                "lv.cantidad, lv.precio_venta, lv.descuento_linea, lv.importe_linea " +
                 "FROM VENTAS v " +
                 "LEFT JOIN CLIENTES c ON v.id_cliente = c.id_cliente " +
                 "LEFT JOIN LINEAS_VENTA lv ON v.id_venta = lv.id_venta " +
@@ -89,7 +89,7 @@ public class ConsultasService {
                 if (!ventas.containsKey(idVenta)) {
                     Map<String, Object> venta = new LinkedHashMap<>();
                     venta.put("ID Venta", idVenta);
-                    venta.put("Fecha", rs.getDate("fecha_venta"));
+                    venta.put("Fecha", rs.getString("fecha_venta"));
                     venta.put("Cliente", rs.getString("nombre") + " " + rs.getString("apellidos"));
                     venta.put("Descuento Global", rs.getDouble("descuento_global") + "%");
                     venta.put("Importe Total", String.format("%.2f €", rs.getDouble("importe_total")));
@@ -104,7 +104,7 @@ public class ConsultasService {
                     linea.put("Descripción", rs.getString("descripcion"));
                     linea.put("Cantidad", rs.getInt("cantidad"));
                     linea.put("Precio Unit.", String.format("%.2f €", rs.getDouble("precio_venta")));
-                    linea.put("Descuento", rs.getInt("descuento") + "%");
+                    linea.put("Descuento", rs.getInt("descuento_linea") + "%");
                     linea.put("Importe Línea", String.format("%.2f €", rs.getDouble("importe_linea")));
 
                     @SuppressWarnings("unchecked")
@@ -196,11 +196,11 @@ public class ConsultasService {
         return resultados;
     }
 
-    // ========== MÉTODO AUXILIAR: Convertir resultados a String formateado ==========
+    // ========== METODO AUXILIAR: Convertir resultados a String formateado ==========
     public String formatearResultados(String titulo, List<Map<String, Object>> datos) {
         StringBuilder sb = new StringBuilder();
         sb.append("\n╔════════════════════════════════════════════╗\n");
-        sb.append("║ ").append(String.format("%-40s", titulo)).append(" ║\n");
+        sb.append("║ ").append(String.format("%-40s", titulo)).append("                     ║\n");
         sb.append("╚════════════════════════════════════════════╝\n");
 
         if (datos.isEmpty()) {

@@ -151,7 +151,8 @@ public class VentaService {
             }
 
             // 4. Insertar líneas de venta y actualizar stock
-            String sqlLinea = "INSERT INTO LINEAS_VENTA (id_venta, id_producto, cantidad, precio_venta, descuento, importe_linea) " +
+            // Usar la columna correcta descuento_linea
+            String sqlLinea = "INSERT INTO LINEAS_VENTA (id_venta, id_producto, cantidad, precio_venta, descuento_linea, importe_linea) " +
                     "VALUES (?, ?, ?, ?, ?, ?)";
             for (LineaVenta linea : venta.getLineasVenta()) {
                 try (PreparedStatement pstmt = conn.prepareStatement(sqlLinea)) {
