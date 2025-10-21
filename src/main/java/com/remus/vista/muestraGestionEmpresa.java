@@ -87,7 +87,7 @@ public class muestraGestionEmpresa extends JFrame {
 
         panel.add(izquierda, BorderLayout.WEST);
 
-        // Formulario insertar
+        // Formulario insertar/modificar/eliminar
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5,5,5,5);
@@ -113,8 +113,27 @@ public class muestraGestionEmpresa extends JFrame {
         gbc.gridx = 1; JTextField txtDirEnv = new JTextField(20); form.add(txtDirEnv, gbc);
 
         y++; gbc.gridx = 0; gbc.gridy = y; gbc.gridwidth = 2;
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         JButton btnInsertar = new JButton("Insertar Cliente");
-        form.add(btnInsertar, gbc);
+        JButton btnModificar = new JButton("Modificar Cliente");
+        JButton btnEliminar = new JButton("Eliminar Cliente");
+        btnPanel.add(btnInsertar);
+        btnPanel.add(btnModificar);
+        btnPanel.add(btnEliminar);
+        form.add(btnPanel, gbc);
+
+        // Al seleccionar un cliente, rellenar los campos
+        listClientes.addListSelectionListener(e -> {
+            Cliente c = listClientes.getSelectedValue();
+            if (c != null) {
+                txtNombre.setText(c.getNombre());
+                txtApellidos.setText(c.getApellidos());
+                txtDni.setText(c.getDni());
+                txtTelefono.setText(c.getTelefono() != null ? c.getTelefono().toString() : "");
+                txtDirHab.setText(c.getDireccionHabitual());
+                txtDirEnv.setText(c.getDireccionEnvio());
+            }
+        });
 
         btnInsertar.addActionListener(e -> {
             try {
@@ -148,6 +167,51 @@ public class muestraGestionEmpresa extends JFrame {
             }
         });
 
+        btnModificar.addActionListener(e -> {
+            Cliente c = listClientes.getSelectedValue();
+            if (c == null) {
+                JOptionPane.showMessageDialog(this, "Selecciona un cliente para modificar", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            try {
+                c.setNombre(txtNombre.getText().trim());
+                c.setApellidos(txtApellidos.getText().trim());
+                c.setDni(txtDni.getText().trim());
+                String tel = txtTelefono.getText().trim();
+                c.setTelefono(!tel.isEmpty() ? Integer.parseInt(tel) : null);
+                c.setDireccionHabitual(txtDirHab.getText().trim());
+                c.setDireccionEnvio(txtDirEnv.getText().trim());
+                boolean ok = clienteDAO.actualizar(c);
+                if (ok) {
+                    JOptionPane.showMessageDialog(this, "Cliente modificado correctamente");
+                    recargarClientes();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo modificar el cliente", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al modificar cliente: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                LOGGER.log(Level.SEVERE, "Error al modificar cliente", ex);
+            }
+        });
+
+        btnEliminar.addActionListener(e -> {
+            Cliente c = listClientes.getSelectedValue();
+            if (c == null) {
+                JOptionPane.showMessageDialog(this, "Selecciona un cliente para eliminar", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int confirm = JOptionPane.showConfirmDialog(this, "¿Seguro que quieres eliminar el cliente?", "Confirmar", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                boolean ok = clienteDAO.eliminar(c.getIdCliente());
+                if (ok) {
+                    JOptionPane.showMessageDialog(this, "Cliente eliminado correctamente");
+                    recargarClientes();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo eliminar el cliente", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        });
+
         panel.add(form, BorderLayout.CENTER);
         return panel;
     }
@@ -160,10 +224,9 @@ public class muestraGestionEmpresa extends JFrame {
         JPanel left = new JPanel(new BorderLayout(5,5));
         left.add(new JLabel("Lista de Empresas:"), BorderLayout.NORTH);
         listEmpresas.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        // Limitamos el número de filas visibles y fijamos un tamaño preferido para que no expanda el panel central
         listEmpresas.setVisibleRowCount(10);
         JScrollPane empresasScroll = new JScrollPane(listEmpresas);
-        empresasScroll.setPreferredSize(new Dimension(260, 300)); // ancho fijo para la lista
+        empresasScroll.setPreferredSize(new Dimension(260, 300));
         left.add(empresasScroll, BorderLayout.CENTER);
         JButton btnRef = new JButton("Refrescar"); btnRef.addActionListener(e -> recargarEmpresas());
         left.add(btnRef, BorderLayout.SOUTH);
@@ -185,7 +248,26 @@ public class muestraGestionEmpresa extends JFrame {
         y++; gbc.gridx = 0; gbc.gridy = y; form.add(new JLabel("Localidad:"), gbc);
         gbc.gridx = 1; JTextField txtLocalidad = new JTextField(20); form.add(txtLocalidad, gbc);
 
-        y++; gbc.gridx = 0; gbc.gridy = y; gbc.gridwidth = 2; JButton btnInsert = new JButton("Insertar Empresa"); form.add(btnInsert, gbc);
+        y++; gbc.gridx = 0; gbc.gridy = y; gbc.gridwidth = 2;
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton btnInsert = new JButton("Insertar Empresa");
+        JButton btnModificar = new JButton("Modificar Empresa");
+        JButton btnEliminar = new JButton("Eliminar Empresa");
+        btnPanel.add(btnInsert);
+        btnPanel.add(btnModificar);
+        btnPanel.add(btnEliminar);
+        form.add(btnPanel, gbc);
+
+        // Al seleccionar una empresa, rellenar los campos
+        listEmpresas.addListSelectionListener(e -> {
+            Empresa emp = listEmpresas.getSelectedValue();
+            if (emp != null) {
+                txtCif.setText(emp.getCif());
+                txtNombre.setText(emp.getNombre());
+                txtDomicilio.setText(emp.getDomicilio());
+                txtLocalidad.setText(emp.getLocalidad());
+            }
+        });
 
         btnInsert.addActionListener(e -> {
             try {
@@ -204,6 +286,48 @@ public class muestraGestionEmpresa extends JFrame {
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error al insertar empresa: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 LOGGER.log(Level.SEVERE, "Error al insertar empresa", ex);
+            }
+        });
+
+        btnModificar.addActionListener(e -> {
+            Empresa emp = listEmpresas.getSelectedValue();
+            if (emp == null) {
+                JOptionPane.showMessageDialog(this, "Selecciona una empresa para modificar", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            try {
+                emp.setCif(txtCif.getText().trim());
+                emp.setNombre(txtNombre.getText().trim());
+                emp.setDomicilio(txtDomicilio.getText().trim());
+                emp.setLocalidad(txtLocalidad.getText().trim());
+                boolean ok = empresaDAO.actualizar(emp);
+                if (ok) {
+                    JOptionPane.showMessageDialog(this, "Empresa modificada correctamente");
+                    recargarEmpresas();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo modificar la empresa", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al modificar empresa: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                LOGGER.log(Level.SEVERE, "Error al modificar empresa", ex);
+            }
+        });
+
+        btnEliminar.addActionListener(e -> {
+            Empresa emp = listEmpresas.getSelectedValue();
+            if (emp == null) {
+                JOptionPane.showMessageDialog(this, "Selecciona una empresa para eliminar", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int confirm = JOptionPane.showConfirmDialog(this, "¿Seguro que quieres eliminar la empresa?", "Confirmar", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                boolean ok = empresaDAO.eliminar(emp.getId());
+                if (ok) {
+                    JOptionPane.showMessageDialog(this, "Empresa eliminada correctamente");
+                    recargarEmpresas();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo eliminar la empresa", "Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
 
@@ -243,7 +367,27 @@ public class muestraGestionEmpresa extends JFrame {
         y++; gbc.gridx = 0; gbc.gridy = y; form.add(new JLabel("Stock mínimo:"), gbc);
         gbc.gridx = 1; JTextField txtStockMin = new JTextField(20); form.add(txtStockMin, gbc);
 
-        y++; gbc.gridx = 0; gbc.gridy = y; gbc.gridwidth = 2; JButton btnInsert = new JButton("Insertar Producto"); form.add(btnInsert, gbc);
+        y++; gbc.gridx = 0; gbc.gridy = y; gbc.gridwidth = 2;
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton btnInsert = new JButton("Insertar Producto");
+        JButton btnModificar = new JButton("Modificar Producto");
+        JButton btnEliminar = new JButton("Eliminar Producto");
+        btnPanel.add(btnInsert);
+        btnPanel.add(btnModificar);
+        btnPanel.add(btnEliminar);
+        form.add(btnPanel, gbc);
+
+        // Al seleccionar un producto, rellenar los campos
+        listProductos.addListSelectionListener(e -> {
+            Producto p = listProductos.getSelectedValue();
+            if (p != null) {
+                txtCodigo.setText(p.getCodigo());
+                txtDesc.setText(p.getDescripcion());
+                txtPrecio.setText(String.valueOf(p.getPrecioRecomendado()));
+                txtStock.setText(String.valueOf(p.getStock()));
+                txtStockMin.setText(String.valueOf(p.getStockMinimo()));
+            }
+        });
 
         btnInsert.addActionListener(e -> {
             try {
@@ -265,6 +409,49 @@ public class muestraGestionEmpresa extends JFrame {
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error al insertar producto: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
                 LOGGER.log(Level.SEVERE, "Error al insertar producto", ex);
+            }
+        });
+
+        btnModificar.addActionListener(e -> {
+            Producto p = listProductos.getSelectedValue();
+            if (p == null) {
+                JOptionPane.showMessageDialog(this, "Selecciona un producto para modificar", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            try {
+                p.setCodigo(txtCodigo.getText().trim());
+                p.setDescripcion(txtDesc.getText().trim());
+                p.setPrecioRecomendado(Double.parseDouble(txtPrecio.getText().trim()));
+                p.setStock(Integer.parseInt(txtStock.getText().trim()));
+                p.setStockMinimo(Integer.parseInt(txtStockMin.getText().trim()));
+                boolean ok = productoDAO.actualizar(p);
+                if (ok) {
+                    JOptionPane.showMessageDialog(this, "Producto modificado correctamente");
+                    recargarProductos();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo modificar el producto", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Error al modificar producto: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                LOGGER.log(Level.SEVERE, "Error al modificar producto", ex);
+            }
+        });
+
+        btnEliminar.addActionListener(e -> {
+            Producto p = listProductos.getSelectedValue();
+            if (p == null) {
+                JOptionPane.showMessageDialog(this, "Selecciona un producto para eliminar", "Aviso", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int confirm = JOptionPane.showConfirmDialog(this, "¿Seguro que quieres eliminar el producto?", "Confirmar", JOptionPane.YES_NO_OPTION);
+            if (confirm == JOptionPane.YES_OPTION) {
+                boolean ok = productoDAO.eliminar(p.getIdProducto());
+                if (ok) {
+                    JOptionPane.showMessageDialog(this, "Producto eliminado correctamente");
+                    recargarProductos();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No se pudo eliminar el producto", "Error", JOptionPane.ERROR_MESSAGE);
+                }
             }
         });
 

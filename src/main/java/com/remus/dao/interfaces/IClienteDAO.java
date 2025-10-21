@@ -37,6 +37,13 @@ public interface IClienteDAO {
      */
     Cliente obtenerPorNombre(String nombreCli);
 
+
+    /*
+    Obtener por DNI
+     */
+    Cliente obtenerPorDNI(String dniCli);
+
+
     /**
      * Obtiene Clientes por localidad
      */

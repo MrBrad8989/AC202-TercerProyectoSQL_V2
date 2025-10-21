@@ -113,7 +113,24 @@ public class ClienteDAOImpl implements IClienteDAO {
             }
         }
 
-        @Override
+    @Override
+    public Cliente obtenerPorDNI(String dniCli) {
+        String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo FROM CLIENTES WHERE dni = ?";
+
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setString(1, dniCli);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                return mapearCliente(rs);
+            }
+            return null;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al buscar Cliente: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
         public List<Cliente> obtenerPorApellidos(String apellidos) {
             List<Cliente> Clientes = new ArrayList<>();
             String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo FROM CLIENTES WHERE apellidos = ?";
