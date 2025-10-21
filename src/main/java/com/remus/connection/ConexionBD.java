@@ -7,10 +7,11 @@ import java.sql.*;
  */
 public class ConexionBD {
 
-    // Ruta de la base de datos MySQL
-    private static final String URL = "jdbc:mysql://localhost:3306/AC202?useSSL=false&serverTimezone=UTC";
-    private static final String USER = "alumno";
-    private static final String PASSWORD = "alumno";
+    // Configuración de conexión a MySQL
+    private static final String DRIVER = "com.mysql.cj.jdbc.Driver";
+    private static final String URL = "jdbc:mysql://localhost:3306/AC202";
+    private static final String USUARIO = "alumno";
+    private static final String CONTRASEÑA = "alumno"; // Cambiar según tu configuración
 
     // Pool simple de conexión (singleton)
     private static Connection conexionActual = null;
@@ -23,12 +24,12 @@ public class ConexionBD {
     public static Connection getConexion() throws SQLException {
         try {
             // Cargar el driver de MySQL
-            Class.forName("com.mysql.cj.jdbc.Driver");
+            Class.forName(DRIVER);
 
             // Si no hay conexión o está cerrada, crear nueva
             if (conexionActual == null || conexionActual.isClosed()) {
-                conexionActual = DriverManager.getConnection(URL, USER, PASSWORD);
-                System.out.println("✓ Conexión establecida a MySQL en: " + URL);
+                conexionActual = DriverManager.getConnection(URL, USUARIO, CONTRASEÑA);
+                System.out.println("✓ Conexión establecida a MySQL: gestion_ventas");
             }
 
             return conexionActual;
@@ -119,13 +120,12 @@ public class ConexionBD {
             System.out.println("\n=== INFORMACIÓN DE LA BASE DE DATOS ===");
 
             DatabaseMetaData metaData = conn.getMetaData();
-            System.out.println("URL: " + metaData.getURL());
-            System.out.println("Base de datos: " + conn.getCatalog());
             System.out.println("Driver: " + metaData.getDriverName());
             System.out.println("Versión: " + metaData.getDriverVersion());
+            System.out.println("URL: " + URL);
 
             // Contar registros en las tablas principales
-            String[] tablas = {"EMPRESA", "CLIENTES", "PRODUCTOS", "VENTAS", "LINEAS_VENTA"};
+            String[] tablas = {"empresa", "clientes", "productos", "ventas", "lineas_venta"};
             for (String tabla : tablas) {
                 try (ResultSet rs = stmt.executeQuery("SELECT COUNT(*) as total FROM " + tabla)) {
                     if (rs.next()) {
@@ -137,36 +137,6 @@ public class ConexionBD {
 
         } catch (SQLException e) {
             System.err.println("Error al obtener información de BD: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Ejecuta el script de creación de la base de datos
-     * NOTA: Este método es útil para inicializar la BD desde Java
-     */
-    public static void inicializarBD(String rutaScript) {
-        try (Connection conn = getConexion();
-             Statement stmt = conn.createStatement()) {
-
-            // Leer y ejecutar el script SQL
-            java.nio.file.Path path = java.nio.file.Paths.get(rutaScript);
-            String script = new String(java.nio.file.Files.readAllBytes(path));
-
-            // Dividir en sentencias individuales
-            String[] sentencias = script.split(";");
-
-            for (String sentencia : sentencias) {
-                sentencia = sentencia.trim();
-                if (!sentencia.isEmpty() && !sentencia.startsWith("--")) {
-                    stmt.execute(sentencia);
-                }
-            }
-
-            System.out.println("✓ Base de datos inicializada correctamente");
-
-        } catch (Exception e) {
-            System.err.println("✗ Error al inicializar BD: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 

@@ -321,6 +321,13 @@ public class PanelGestionVentas extends JPanel {
         }
     }
 
+    /**
+     * Método público para permitir que otros componentes soliciten la recarga de productos en este panel.
+     */
+    public void recargarProductos() {
+        cargarProductos();
+    }
+
     private void actualizarInfoCliente() {
         Cliente c = (Cliente) cmbCliente.getSelectedItem();
         if (c != null) {
@@ -362,7 +369,8 @@ public class PanelGestionVentas extends JPanel {
                 return;
             }
 
-            double precioVenta = Double.parseDouble(precioStr);
+            // Normalizar y parsear precios que usen coma o punto y que puedan incluir separador de miles
+            double precioVenta = NumberParser.parsePrecio(precioStr);
 
             // Validaciones de negocio
             ventaService.validarCantidad(cantidad);
@@ -399,7 +407,7 @@ public class PanelGestionVentas extends JPanel {
             spnDescuento.setValue(0);
 
         } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Precio inválido", "Error de entrada", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Precio inválido: " + e.getMessage(), "Error de entrada", JOptionPane.ERROR_MESSAGE);
         } catch (IllegalArgumentException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Validación", JOptionPane.WARNING_MESSAGE);
         } catch (Exception e) {

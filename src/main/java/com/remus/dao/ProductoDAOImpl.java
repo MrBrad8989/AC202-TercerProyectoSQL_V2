@@ -5,15 +5,18 @@ import com.remus.dao.interfaces.IProductoDAO;
 import com.remus.modelo.Producto;
 
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ProductoDAOImpl implements IProductoDAO {
 
+    // Se asume el esquema MySQL con la columna 'stock' (existencias) añadida
+    // Columnas: id_producto, codigo, descripcion, precio_recomendado, stock, stock_minimc, activo, fecha_creacion
+    private static final String SELECT_FIELDS = "id_producto, codigo, descripcion, precio_recomendado, stock, stock_minimc, activo, fecha_creacion";
+
     @Override
     public Producto obtenerPorId(int idProducto) {
-        String sql = "SELECT id_producto, codigo, descripcion, precio_recomendado, existencias FROM productos WHERE id_producto = ?";
+        String sql = "SELECT " + SELECT_FIELDS + " FROM PRODUCTOS WHERE id_producto = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, idProducto);
@@ -30,7 +33,7 @@ public class ProductoDAOImpl implements IProductoDAO {
 
     @Override
     public Producto obtenerPorCodigo(String codigo) {
-        String sql = "SELECT id_producto, codigo, descripcion, precio_recomendado, existencias FROM productos WHERE codigo = ?";
+        String sql = "SELECT " + SELECT_FIELDS + " FROM PRODUCTOS WHERE codigo = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setString(1, codigo);
@@ -48,7 +51,7 @@ public class ProductoDAOImpl implements IProductoDAO {
     @Override
     public List<Producto> obtenerTodos() {
         List<Producto> productos = new ArrayList<>();
-        String sql = "SELECT id_producto, codigo, descripcion, precio_recomendado, existencias FROM productos ORDER BY id_producto";
+        String sql = "SELECT " + SELECT_FIELDS + " FROM PRODUCTOS ORDER BY id_producto";
 
         try (Statement stmt = ConexionBD.getConexion().createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -65,7 +68,7 @@ public class ProductoDAOImpl implements IProductoDAO {
     @Override
     public List<Producto> obtenerActivos() {
         List<Producto> productos = new ArrayList<>();
-        String sql = "SELECT id_producto, codigo, descripcion, precio_recomendado, existencias FROM productos WHERE activo = 1 ORDER BY descripcion";
+        String sql = "SELECT " + SELECT_FIELDS + " FROM PRODUCTOS WHERE activo = 1 ORDER BY descripcion";
 
         try (Statement stmt = ConexionBD.getConexion().createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -81,13 +84,18 @@ public class ProductoDAOImpl implements IProductoDAO {
 
     @Override
     public boolean insertar(Producto producto) {
-        String sql = "INSERT INTO productos (codigo, descripcion, precio_recomendado, existencias) VALUES (?, ?, ?, ?)";
+        // Se añade la columna 'stock' a la inserción
+        String sql = "INSERT INTO PRODUCTOS (codigo, descripcion, precio_recomendado, stock, stock_minimc, activo, fecha_creacion) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setString(1, producto.getCodigo());
             pstmt.setString(2, producto.getDescripcion());
             pstmt.setDouble(3, producto.getPrecioRecomendado());
-            pstmt.setInt(4, producto.getStock());
+            pstmt.setInt(4, producto.getStock()); // Nuevo campo
+            pstmt.setInt(5, producto.getStockMinimo());
+            pstmt.setBoolean(6, producto.getActivo());
+            pstmt.setString(7, producto.getFechaCreacion()); // Si es null, MySQL lo gestionará si tiene DEFAULT
 
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -97,24 +105,44 @@ public class ProductoDAOImpl implements IProductoDAO {
 
     @Override
     public boolean actualizar(Producto producto) {
-        String sql = "UPDATE productos SET codigo = ?, descripcion = ?, precio_recomendado = ?, existencias = ? WHERE id_producto = ?";
+        // Se añade la columna 'stock' a la actualización
+        String sql = "UPDATE PRODUCTOS SET codigo = ?, descripcion = ?, precio_recomendado = ?, stock = ?, stock_minimc = ?, activo = ?, fecha_creacion = ? " +
+                "WHERE id_producto = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setString(1, producto.getCodigo());
             pstmt.setString(2, producto.getDescripcion());
             pstmt.setDouble(3, producto.getPrecioRecomendado());
             pstmt.setInt(4, producto.getStock());
-            pstmt.setInt(5, producto.getIdProducto());
+            pstmt.setInt(5, producto.getStockMinimo());
+            pstmt.setBoolean(6, producto.getActivo());
+            pstmt.setString(7, producto.getFechaCreacion());
+            pstmt.setInt(8, producto.getIdProducto());
 
-            return pstmt.executeUpdate() > 0;
+            boolean actualizado = pstmt.executeUpdate() > 0;
+
+            if (actualizado) {
+                // Actualizar ventas relacionadas
+                String sqlVentas = "UPDATE VENTAS v " +
+                        "JOIN LINEAS_VENTA lv ON v.id_venta = lv.id_venta " +
+                        "SET v.importe_total = (SELECT SUM(lv.cantidad * lv.precio_venta) FROM LINEAS_VENTA lv WHERE lv.id_venta = v.id_venta) " +
+                        "WHERE lv.id_producto = ?";
+
+                try (PreparedStatement pstmtVentas = ConexionBD.getConexion().prepareStatement(sqlVentas)) {
+                    pstmtVentas.setInt(1, producto.getIdProducto());
+                    pstmtVentas.executeUpdate();
+                }
+            }
+
+            return actualizado;
         } catch (SQLException e) {
-            throw new RuntimeException("Error al actualizar producto: " + e.getMessage(), e);
+            throw new RuntimeException("Error al actualizar producto y ventas relacionadas: " + e.getMessage(), e);
         }
     }
 
     @Override
     public boolean eliminar(int idProducto) {
-        String sql = "DELETE FROM productos WHERE id_producto = ?";
+        String sql = "DELETE FROM PRODUCTOS WHERE id_producto = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, idProducto);
@@ -124,8 +152,22 @@ public class ProductoDAOImpl implements IProductoDAO {
         }
     }
 
+    @Override
+    public boolean actualizarStock(int idProducto, int nuevoStock) {
+        // CORRECCIÓN CRÍTICA: Se actualiza la columna 'stock' real, no 'stock_minimc'
+        String sql = "UPDATE PRODUCTOS SET stock = ? WHERE id_producto = ?";
+
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setInt(1, nuevoStock);
+            pstmt.setInt(2, idProducto);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al actualizar stock: " + e.getMessage(), e);
+        }
+    }
+
     /**
-     * Mapea un registro de la tabla PRODUCTOS a un objeto Producto
+     * Mapea un registro de la tabla productos a un objeto Producto
      */
     private Producto mapearProducto(ResultSet rs) throws SQLException {
         Producto p = new Producto();
@@ -133,7 +175,10 @@ public class ProductoDAOImpl implements IProductoDAO {
         p.setCodigo(rs.getString("codigo"));
         p.setDescripcion(rs.getString("descripcion"));
         p.setPrecioRecomendado(rs.getDouble("precio_recomendado"));
-        p.getStock(rs.getInt("existencias"));
+        p.setStock(rs.getInt("stock")); // Nuevo campo a mapear
+        p.setStockMinimo(rs.getInt("stock_minimc"));
+        p.setActivo(rs.getBoolean("activo"));
+        p.setFechaCreacion(rs.getString("fecha_creacion"));
         return p;
     }
 }

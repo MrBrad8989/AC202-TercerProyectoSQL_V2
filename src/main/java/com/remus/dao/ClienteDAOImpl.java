@@ -4,116 +4,137 @@ import com.remus.connection.ConexionBD;
 import com.remus.dao.interfaces.IClienteDAO;
 import com.remus.modelo.Cliente;
 
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class ClienteDAOImpl implements IClienteDAO {
 
-        public Cliente obtenerPorCod(int idCli) {
-            String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes WHERE id_cliente = ?";
-
-            try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
-                pstmt.setLong(1, idCli);
-                ResultSet rs = pstmt.executeQuery();
-
-                if (rs.next()) {
-                    return mapearCliente(rs);
-                }
-                return null;
-            } catch (SQLException e) {
-                throw new RuntimeException("Error al buscar Cliente: " + e.getMessage(), e);
-            }
-        }
+    private static final String SELECT_FIELDS = "id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio, fecha_registro, activo";
 
     @Override
-        public List<Cliente> obtenerTodos() {
-            List<Cliente> Clientes = new ArrayList<>();
-            String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes ORDER BY id_cliente";
+    public Cliente obtenerPorCod(int idCli) {
+        String sql = "SELECT " + SELECT_FIELDS + " FROM CLIENTES WHERE id_cliente = ?";
 
-            try (Statement stmt = ConexionBD.getConexion().createStatement();
-                 ResultSet rs = stmt.executeQuery(sql)) {
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setInt(1, idCli);
+            ResultSet rs = pstmt.executeQuery();
 
-                while (rs.next()) {
-                    Clientes.add(mapearCliente(rs));
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException("Error al listar Clientes: " + e.getMessage(), e);
+            if (rs.next()) {
+                return mapearCliente(rs);
             }
-            return Clientes;
+            return null;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al buscar Cliente: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public List<Cliente> obtenerTodos() {
+        List<Cliente> Clientes = new ArrayList<>();
+        String sql = "SELECT " + SELECT_FIELDS + " FROM CLIENTES ORDER BY id_cliente";
+
+        try (Statement stmt = ConexionBD.getConexion().createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                Clientes.add(mapearCliente(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al listar Clientes: " + e.getMessage(), e);
+        }
+        return Clientes;
+    }
 
     @Override
     public boolean insertar(Cliente Cliente) {
-        String sql = "INSERT INTO clientes (dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio) VALUES (?, ?, ?, ?, ?, ?)";
+        // Se añaden 'activo' y 'fecha_registro' a la inserción.
+        String sql = "INSERT INTO CLIENTES (dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio, activo, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setString(1, Cliente.getDni());
             pstmt.setString(2, Cliente.getNombre());
             pstmt.setString(3, Cliente.getApellidos());
-            pstmt.setInt(4, Cliente.getTelefono());
+
+            if (Cliente.getTelefono() != null) {
+                pstmt.setInt(4, Cliente.getTelefono());
+            } else {
+                pstmt.setNull(4, java.sql.Types.INTEGER);
+            }
+
             pstmt.setString(5, Cliente.getDireccionHabitual());
             pstmt.setString(6, Cliente.getDireccionEnvio());
+            pstmt.setBoolean(7, Cliente.getActivo());
+            pstmt.setTimestamp(8, new Timestamp(System.currentTimeMillis()));
+
             return pstmt.executeUpdate() > 0;
         } catch (SQLException e) {
             throw new RuntimeException("Error al insertar Cliente: " + e.getMessage(), e);
         }
     }
 
-        @Override
-        public boolean actualizar(Cliente Cliente) {
-            String sql = "UPDATE clientes SET dni = ?, nombre = ?, apellidos = ?, telefono = ?, direccion_habitual = ?, direccion_envio = ? WHERE id_cliente = ?";
+    @Override
+    public boolean actualizar(Cliente cliente) {
+        // Se añaden 'activo' y 'fecha_registro' a la actualización (aunque fecha_registro no se modifica, se debe considerar si fuera editable)
+        String sql = "UPDATE CLIENTES SET NOMBRE = ?, APELLIDOS = ?, DNI = ?, TELEFONO = ?, DIRECCION_HABITUAL = ?, DIRECCION_ENVIO = ?, ACTIVO = ? WHERE ID_CLIENTE = ?";
 
-            try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
-                pstmt.setString(1, Cliente.getDni());
-                pstmt.setString(2, Cliente.getNombre());
-                pstmt.setString(3, Cliente.getApellidos());
-                pstmt.setInt(4, Cliente.getTelefono());
-                pstmt.setString(5, Cliente.getDireccionHabitual());
-                pstmt.setString(6, Cliente.getDireccionEnvio());
-                pstmt.setLong(7, Cliente.getIdCliente());
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setString(1, cliente.getNombre());
+            pstmt.setString(2, cliente.getApellidos());
+            pstmt.setString(3, cliente.getDni());
 
-                return pstmt.executeUpdate() > 0;
-            } catch (SQLException e) {
-                throw new RuntimeException("Error al actualizar Cliente: " + e.getMessage(), e);
+            // CORRECCIÓN: Manejar NULL para telefono
+            if (cliente.getTelefono() != null) {
+                pstmt.setInt(4, cliente.getTelefono());
+            } else {
+                pstmt.setNull(4, java.sql.Types.INTEGER);
             }
+
+            pstmt.setString(5, cliente.getDireccionHabitual());
+            pstmt.setString(6, cliente.getDireccionEnvio());
+            pstmt.setBoolean(7, cliente.getActivo());
+            pstmt.setInt(8, cliente.getIdCliente());
+
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al actualizar Cliente: " + e.getMessage(), e);
         }
+    }
 
-        @Override
-        public boolean eliminar(int idCli) {
-            String sql = "DELETE FROM clientes WHERE id_cliente = ?";
+    @Override
+    public boolean eliminar(int idCli) {
+        String sql = "DELETE FROM CLIENTES WHERE ID_CLIENTE = ?";
 
-            try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
-                pstmt.setInt(1, idCli);
-                return pstmt.executeUpdate() > 0;
-            } catch (SQLException e) {
-                throw new RuntimeException("Error al eliminar Cliente: " + e.getMessage(), e);
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setInt(1, idCli);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al eliminar Cliente: " + e.getMessage(), e);
+        }
+    }
+
+    // ... otros métodos (obtenerPorNombre, obtenerPorDNI, etc.) deberían usar SELECT_FIELDS ...
+
+    @Override
+    public Cliente obtenerPorNombre(String nombreCli) {
+        String sql = "SELECT " + SELECT_FIELDS + " FROM CLIENTES WHERE NOMBRE = ?";
+
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setString(1, nombreCli);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                return mapearCliente(rs);
             }
+            return null;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al buscar Cliente: " + e.getMessage(), e);
         }
-
-        @Override
-        public Cliente obtenerPorNombre(String nombreCli) {
-            String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes WHERE nombre = ?";
-
-            try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
-                pstmt.setString(1, nombreCli);
-                ResultSet rs = pstmt.executeQuery();
-
-                if (rs.next()) {
-                    return mapearCliente(rs);
-                }
-                return null;
-            } catch (SQLException e) {
-                throw new RuntimeException("Error al buscar Cliente: " + e.getMessage(), e);
-            }
-        }
+    }
 
     @Override
     public Cliente obtenerPorDNI(String dniCli) {
-        String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes WHERE dni = ?";
+        String sql = "SELECT " + SELECT_FIELDS + " FROM CLIENTES WHERE DNI = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setString(1, dniCli);
@@ -129,67 +150,69 @@ public class ClienteDAOImpl implements IClienteDAO {
     }
 
     @Override
-        public List<Cliente> obtenerPorApellidos(String apellidos) {
-            List<Cliente> Clientes = new ArrayList<>();
-            String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes WHERE apellidos = ?";
+    public List<Cliente> obtenerPorApellidos(String apellidos) {
+        List<Cliente> clientes = new ArrayList<>();
+        String sql = "SELECT " + SELECT_FIELDS + " FROM CLIENTES WHERE APELLIDOS = ?";
 
-            try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
-                pstmt.setString(1, apellidos);
-                ResultSet rs = pstmt.executeQuery();
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setString(1, apellidos);
+            ResultSet rs = pstmt.executeQuery();
 
-                while (rs.next()) {
-                    Clientes.add(mapearCliente(rs));
-                }
-            } catch (SQLException e) {
-                throw new RuntimeException("Error al buscar Clientes: " + e.getMessage(), e);
+            while (rs.next()) {
+                clientes.add(mapearCliente(rs));
             }
-            return Clientes;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al buscar Clientes: " + e.getMessage(), e);
         }
+        return clientes;
+    }
 
-        @Override
-        public boolean actualizarApellidos(String nombreCli, String nuevaApellidos) {
-            String sql = "UPDATE clientes SET apellidos = ? WHERE nombre = ?";
+    @Override
+    public boolean actualizarApellidos(String nombreCli, String nuevaApellidos) {
+        String sql = "UPDATE CLIENTES SET APELLIDOS = ? WHERE NOMBRE = ?";
 
-            try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
-                pstmt.setString(1, nuevaApellidos);
-                pstmt.setString(2, nombreCli);
-                return pstmt.executeUpdate() > 0;
-            } catch (SQLException e) {
-                throw new RuntimeException("Error al actualizar apellidos: " + e.getMessage(), e);
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setString(1, nuevaApellidos);
+            pstmt.setString(2, nombreCli);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al actualizar apellidos: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public int contarClientes(int idCli) {
+        String sql = "SELECT COUNT(*) as total FROM CLIENTES WHERE ID_CLIENTE = ?";
+
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setInt(1, idCli);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                return rs.getInt("total");
             }
+            return 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al contar clientes: " + e.getMessage(), e);
         }
+    }
 
-        @Override
-        public int contarClientes(int idCli) {
-            String sql = "SELECT COUNT(*) as total FROM clientes WHERE id_cliente = ?";
-
-            try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
-                pstmt.setInt(1, idCli);
-                ResultSet rs = pstmt.executeQuery();
-
-                if (rs.next()) {
-                    return rs.getInt("total");
-                }
-                return 0;
-            } catch (SQLException e) {
-                throw new RuntimeException("Error al contar empleados: " + e.getMessage(), e);
-            }
-        }
-
-        /**
-         * Mapea un ResultSet a un objeto Cliente
-         */
-        private Cliente mapearCliente(ResultSet rs) throws SQLException {
-            return new Cliente(
+    /**
+     * Mapea un ResultSet a un objeto Cliente
+     */
+    private Cliente mapearCliente(ResultSet rs) throws SQLException {
+        // CORRECCIÓN: Se añaden los campos fecha_registro y activo.
+        return new Cliente(
                 rs.getInt("id_cliente"),
                 rs.getString("dni"),
                 rs.getString("nombre"),
                 rs.getString("apellidos"),
-                rs.getInt("telefono"),
+                rs.getObject("telefono", Integer.class), // Usar getObject para manejar NULL
                 rs.getString("direccion_habitual"),
                 rs.getString("direccion_envio"),
-                null, // fecha_registro
-                null  // activo
-            );
-        }
+                // Mapeo de fecha_registro y activo
+                rs.getTimestamp("fecha_registro") != null ? rs.getTimestamp("fecha_registro").toLocalDateTime() : null,
+                rs.getBoolean("activo")
+        );
     }
+}

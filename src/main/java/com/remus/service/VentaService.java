@@ -20,12 +20,8 @@ public class VentaService {
     private final IClienteDAO clienteDAO = new ClienteDAOImpl();
     private final ILineaVentaDAO lineaVentaDAO = new LineaVentaDAOImpl();
 
-    // Constante: rango permitido de variación de precio (±20%)
     private static final double RANGO_PRECIO = 0.20;
 
-    /**
-     * Valida un cliente existente
-     */
     public void validarClienteExistente(int idCliente) throws IllegalArgumentException {
         Cliente cliente = clienteDAO.obtenerPorCod(idCliente);
         if (cliente == null) {
@@ -33,9 +29,6 @@ public class VentaService {
         }
     }
 
-    /**
-     * Valida que un producto exista
-     */
     public void validarProductoExistente(int idProducto) throws IllegalArgumentException {
         Producto producto = productoDAO.obtenerPorId(idProducto);
         if (producto == null) {
@@ -43,18 +36,12 @@ public class VentaService {
         }
     }
 
-    /**
-     * Valida que la cantidad sea válida (> 0)
-     */
     public void validarCantidad(int cantidad) throws IllegalArgumentException {
         if (cantidad <= 0) {
             throw new IllegalArgumentException("La cantidad debe ser mayor que 0");
         }
     }
 
-    /**
-     * Valida que hay stock suficiente
-     */
     public void validarStock(int idProducto, int cantidad) throws IllegalArgumentException {
         Producto producto = productoDAO.obtenerPorId(idProducto);
         if (producto == null) {
@@ -67,13 +54,14 @@ public class VentaService {
         }
     }
 
-    /**
-     * Valida que el precio esté dentro del rango permitido (±20% del recomendado)
-     */
     public void validarPrecioVenta(int idProducto, double precioVenta) throws IllegalArgumentException {
         Producto producto = productoDAO.obtenerPorId(idProducto);
         if (producto == null) {
             throw new IllegalArgumentException("Producto no encontrado");
+        }
+
+        if (producto.getPrecioRecomendado() == null) {
+            throw new IllegalArgumentException("El producto no tiene un precio recomendado definido");
         }
 
         double precioRecomendado = producto.getPrecioRecomendado();
@@ -87,18 +75,12 @@ public class VentaService {
         }
     }
 
-    /**
-     * Valida el descuento de una línea (0-100)
-     */
     public void validarDescuento(int descuento) throws IllegalArgumentException {
         if (descuento < 0 || descuento > 100) {
             throw new IllegalArgumentException("El descuento debe estar entre 0 y 100");
         }
     }
 
-    /**
-     * Calcula el importe de una línea: cantidad * precio - (cantidad * precio * descuento / 100)
-     */
     public double calcularImporteLinea(int cantidad, double precioVenta, int descuento) {
         double subtotal = cantidad * precioVenta;
         double descuentoAplicado = subtotal * (descuento / 100.0);
@@ -107,17 +89,14 @@ public class VentaService {
 
     /**
      * Inserta una venta completa con sus líneas (TRANSACCIÓN)
-     * Incluye validaciones y actualización automática de stock
      */
     public int insertarVentaConTransaccion(Venta venta) throws Exception {
         Connection conn = ConexionBD.getConexion();
-        conn.setAutoCommit(false); // Desactivar auto-commit para controlar transacción
+        conn.setAutoCommit(false);
 
         try {
-            // 1. Validar cliente
             validarClienteExistente(venta.getCliente().getIdCliente());
 
-            // 2. Validar líneas de venta
             if (venta.getLineasVenta() == null || venta.getLineasVenta().isEmpty()) {
                 throw new IllegalArgumentException("La venta debe contener al menos una línea");
             }
@@ -130,14 +109,13 @@ public class VentaService {
                 validarDescuento(linea.getDescuento());
             }
 
-            // 3. Insertar venta (sin líneas aún)
             String sqlVenta = "INSERT INTO VENTAS (id_cliente, fecha_venta, descuento_global, importe_total, observaciones, estado) " +
                     "VALUES (?, ?, ?, ?, ?, ?)";
             try (PreparedStatement pstmt = conn.prepareStatement(sqlVenta, java.sql.Statement.RETURN_GENERATED_KEYS)) {
                 pstmt.setInt(1, venta.getCliente().getIdCliente());
                 pstmt.setString(2, venta.getFechaVenta().toString());
                 pstmt.setDouble(3, venta.getDescuentoGlobal() != null ? venta.getDescuentoGlobal() : 0.0);
-                pstmt.setDouble(4, 0.0); // Se actualizará después
+                pstmt.setDouble(4, 0.0);
                 pstmt.setString(5, venta.getObservaciones() != null ? venta.getObservaciones() : "");
                 pstmt.setString(6, venta.getEstado() != null ? venta.getEstado() : "COMPLETADA");
 
@@ -150,8 +128,6 @@ public class VentaService {
                 venta.setIdVenta(idVentaGenerado);
             }
 
-            // 4. Insertar líneas de venta y actualizar stock
-            // Usar la columna correcta descuento_linea
             String sqlLinea = "INSERT INTO LINEAS_VENTA (id_venta, id_producto, cantidad, precio_venta, descuento_linea, importe_linea) " +
                     "VALUES (?, ?, ?, ?, ?, ?)";
             for (LineaVenta linea : venta.getLineasVenta()) {
@@ -168,37 +144,49 @@ public class VentaService {
                     pstmt.executeUpdate();
                 }
 
-                // Actualizar stock (restar cantidad vendida)
-                Producto p = productoDAO.obtenerPorId(linea.getIdProducto());
-                int nuevoStock = p.getStock() - linea.getCantidad();
-                if (nuevoStock < 0) {
-                    throw new IllegalArgumentException("Stock insuficiente para producto ID: " + linea.getIdProducto());
-                }
-                productoDAO.actualizarStock(linea.getIdProducto(), nuevoStock);
+                /*
+                 * NOTA: Se elimina la llamada a productoDAO.actualizarStock(linea.getIdProducto(), nuevoStock);
+                 * para delegar esta tarea al TRIGGER de MySQL (trg_actualizar_stock_insert)
+                 * y garantizar la integridad de la transacción en la BD.
+                 */
             }
 
-            // 5. Llamar a función CALCULAR_TOTAL_LINEAS_VENTA
-            double totalCalculado = calcularTotalLineasVenta(conn, venta.getIdVenta());
+            // *** INICIO: CUMPLIMIENTO REQUISITO 6 (Llamada a Función Almacenada) ***
 
-            // Aplicar descuento global si existe
+            // 1. LLAMAR A LA FUNCIÓN ALMACENADA DE MYSQL (R6 paso 2)
+            double totalCalculado;
+            // Usamos SELECT nombre_funcion(?) para llamar a una función que retorna un valor
+            String sqlSelectCall = "SELECT CALCULAR_TOTAL_LINEAS_VENTA(?)";
+
+            try (PreparedStatement pstmtCall = conn.prepareStatement(sqlSelectCall)) {
+                pstmtCall.setInt(1, venta.getIdVenta());
+                ResultSet rsCall = pstmtCall.executeQuery();
+
+                if (!rsCall.next()) {
+                    throw new SQLException("Error al obtener el resultado de CALCULAR_TOTAL_LINEAS_VENTA.");
+                }
+                totalCalculado = rsCall.getDouble(1); // Obtener el valor devuelto por la función (columna 1)
+            }
+
+            // 2. APLICAR DESCUENTO GLOBAL (Lógica de negocio en Java)
             double descuentoGlobal = venta.getDescuentoGlobal() != null ? venta.getDescuentoGlobal() : 0.0;
             double totalConDescuento = totalCalculado - (totalCalculado * descuentoGlobal / 100.0);
 
-            // 6. Actualizar importe_total en VENTAS
+            // 3. ACTUALIZAR LA VENTA CON EL RESULTADO FINAL (R6 paso 3)
             String sqlUpdate = "UPDATE VENTAS SET importe_total = ? WHERE id_venta = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(sqlUpdate)) {
-                pstmt.setDouble(1, totalConDescuento);
-                pstmt.setInt(2, venta.getIdVenta());
-                pstmt.executeUpdate();
+            try (PreparedStatement pstmtUpdate = conn.prepareStatement(sqlUpdate)) {
+                pstmtUpdate.setDouble(1, totalConDescuento);
+                pstmtUpdate.setInt(2, venta.getIdVenta());
+                pstmtUpdate.executeUpdate();
             }
 
-            // 7. COMMIT - confirmar transacción
+            // *** FIN: CUMPLIMIENTO REQUISITO 6 ***
+
             conn.commit();
             System.out.println("✓ Venta #" + venta.getIdVenta() + " registrada exitosamente");
             return venta.getIdVenta();
 
         } catch (Exception e) {
-            // ROLLBACK - revertir cambios en caso de error
             try {
                 conn.rollback();
                 System.err.println("✗ Transacción revertida: " + e.getMessage());
@@ -207,7 +195,6 @@ public class VentaService {
             }
             throw e;
         } finally {
-            // Restaurar auto-commit
             try {
                 conn.setAutoCommit(true);
             } catch (SQLException e) {
@@ -216,41 +203,16 @@ public class VentaService {
         }
     }
 
-    /**
-     * Calcula el total de líneas de una venta
-     */
-    private double calcularTotalLineasVenta(Connection conn, int idVenta) throws SQLException {
-        String sql = "SELECT SUM(importe_linea) as total FROM LINEAS_VENTA WHERE id_venta = ?";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setInt(1, idVenta);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                double total = rs.getDouble("total");
-                return Double.isNaN(total) ? 0.0 : total;
-            }
-            return 0.0;
-        }
-    }
-
-    /**
-     * Obtiene el precio recomendado de un producto
-     */
     public double obtenerPrecioRecomendado(int idProducto) {
         Producto p = productoDAO.obtenerPorId(idProducto);
         return p != null ? p.getPrecioRecomendado() : 0.0;
     }
 
-    /**
-     * Obtiene el stock actual de un producto
-     */
     public int obtenerStockProducto(int idProducto) {
         Producto p = productoDAO.obtenerPorId(idProducto);
         return p != null ? p.getStock() : 0;
     }
 
-    /**
-     * Obtiene el rango de precio permitido para un producto
-     */
     public double[] obtenerRangoPrecio(int idProducto) {
         Producto p = productoDAO.obtenerPorId(idProducto);
         if (p != null) {

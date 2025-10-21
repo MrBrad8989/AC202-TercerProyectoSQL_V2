@@ -75,7 +75,7 @@ public class PanelReportes extends JPanel {
 
     private void cargarReporteClientes() {
         try {
-            List<Map<String, Object>> datos = consultasService.consultaClientesOrdenados();
+            List<Map<String, Object>> datos = consultasService.consultaCLIENTESOrdenados();
             mostrarEnTabla(tablaClientesReporte, datos);
             mostrarMensaje("Se cargaron " + datos.size() + " clientes");
         } catch (Exception e) {
@@ -102,7 +102,7 @@ public class PanelReportes extends JPanel {
 
     private void cargarReporteProductos() {
         try {
-            List<Map<String, Object>> datos = consultasService.consultaProductosOrdenados();
+            List<Map<String, Object>> datos = consultasService.consultaPRODUCTOSOrdenados();
             mostrarEnTabla(tablaProductosReporte, datos);
             mostrarMensaje("Se cargaron " + datos.size() + " productos");
         } catch (Exception e) {
@@ -131,7 +131,7 @@ public class PanelReportes extends JPanel {
 
     private void cargarReporteVentasDetalladas() {
         try {
-            Map<Integer, Map<String, Object>> ventas = consultasService.consultaVentasConLineas();
+            Map<Integer, Map<String, Object>> ventas = consultasService.consultaVENTASConLineas();
             StringBuilder sb = new StringBuilder();
             sb.append("\n════════════════════════════════════════════════════════════\n");
             sb.append("REPORTE: VENTAS CON LÍNEAS DETALLADAS\n");
@@ -239,7 +239,7 @@ public class PanelReportes extends JPanel {
 
     private void cargarReporteResumenVentas(LocalDate inicio, LocalDate fin) {
         try {
-            Map<String, Object> datos = consultasService.consultaResumenVentas(inicio, fin);
+            Map<String, Object> datos = consultasService.consultaResumenVENTAS(inicio, fin);
             areaResumenVentas.setText(consultasService.formatearResumen("RESUMEN DE VENTAS", datos));
             areaResumenVentas.setCaretPosition(0);
             mostrarMensaje("Reporte generado exitosamente");
@@ -302,7 +302,7 @@ public class PanelReportes extends JPanel {
 
     private void cargarReporteVentasPorCliente(LocalDate inicio, LocalDate fin) {
         try {
-            List<Map<String, Object>> datos = consultasService.consultaVentasPorCliente(inicio, fin);
+            List<Map<String, Object>> datos = consultasService.consultaVENTASPorCliente(inicio, fin);
             mostrarEnTabla(tablaVentasClienteReporte, datos);
             mostrarMensaje("Se cargaron " + datos.size() + " clientes con ventas");
         } catch (Exception e) {

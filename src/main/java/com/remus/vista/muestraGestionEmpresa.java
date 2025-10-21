@@ -14,6 +14,7 @@ import com.remus.modelo.Producto;
 import com.remus.modelo.Venta;
 import com.remus.utility.PanelGestionVentas;
 import com.remus.utility.PanelReportes;
+import com.remus.utility.NumberParser;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -47,6 +48,9 @@ public class muestraGestionEmpresa extends JFrame {
     private final DefaultListModel<Venta> ventasListModel = new DefaultListModel<>();
     private final JList<Venta> listVentas = new JList<>(ventasListModel);
 
+    // Referencia al panel de gestión de ventas para notificar recargas
+    private PanelGestionVentas panelGestion;
+
     private static final Logger LOGGER = Logger.getLogger(muestraGestionEmpresa.class.getName());
 
     public muestraGestionEmpresa() {
@@ -59,7 +63,9 @@ public class muestraGestionEmpresa extends JFrame {
         tabs.addTab("Clientes", crearPanelClientes());
         tabs.addTab("Empresas", crearPanelEmpresas());
         tabs.addTab("Productos", crearPanelProductos());
-        tabs.addTab("Ventas", crearPanelVentas());
+        // Crear y guardar referencia al panel de ventas
+        panelGestion = new PanelGestionVentas(this);
+        tabs.addTab("Ventas", panelGestion);
         tabs.addTab("Reportes", new PanelReportes());
 
         add(tabs);
@@ -393,7 +399,7 @@ public class muestraGestionEmpresa extends JFrame {
             try {
                 String codigo = txtCodigo.getText().trim();
                 String desc = txtDesc.getText().trim();
-                double precio = Double.parseDouble(txtPrecio.getText().trim());
+                double precio = NumberParser.parsePrecio(txtPrecio.getText().trim());
                 int stock = Integer.parseInt(txtStock.getText().trim());
                 int stockMin = Integer.parseInt(txtStockMin.getText().trim());
 
@@ -401,6 +407,7 @@ public class muestraGestionEmpresa extends JFrame {
                 if (productoDAO.insertar(p)) {
                     JOptionPane.showMessageDialog(this, "Producto insertado correctamente");
                     recargarProductos();
+                    if (panelGestion != null) panelGestion.recargarProductos();
                 } else {
                     JOptionPane.showMessageDialog(this, "No se pudo insertar el producto", "Error", JOptionPane.ERROR_MESSAGE);
                 }
@@ -421,13 +428,14 @@ public class muestraGestionEmpresa extends JFrame {
             try {
                 p.setCodigo(txtCodigo.getText().trim());
                 p.setDescripcion(txtDesc.getText().trim());
-                p.setPrecioRecomendado(Double.parseDouble(txtPrecio.getText().trim()));
+                p.setPrecioRecomendado(NumberParser.parsePrecio(txtPrecio.getText().trim()));
                 p.setStock(Integer.parseInt(txtStock.getText().trim()));
                 p.setStockMinimo(Integer.parseInt(txtStockMin.getText().trim()));
                 boolean ok = productoDAO.actualizar(p);
                 if (ok) {
                     JOptionPane.showMessageDialog(this, "Producto modificado correctamente");
                     recargarProductos();
+                    if (panelGestion != null) panelGestion.recargarProductos();
                 } else {
                     JOptionPane.showMessageDialog(this, "No se pudo modificar el producto", "Error", JOptionPane.ERROR_MESSAGE);
                 }
@@ -449,6 +457,7 @@ public class muestraGestionEmpresa extends JFrame {
                 if (ok) {
                     JOptionPane.showMessageDialog(this, "Producto eliminado correctamente");
                     recargarProductos();
+                    if (panelGestion != null) panelGestion.recargarProductos();
                 } else {
                     JOptionPane.showMessageDialog(this, "No se pudo eliminar el producto", "Error", JOptionPane.ERROR_MESSAGE);
                 }

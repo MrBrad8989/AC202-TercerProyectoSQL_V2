@@ -9,12 +9,12 @@ import java.time.LocalDate;
 import java.util.*;
 
 /**
- * Servicio con las 5 consultas/reportes requeridas
+ * Servicio con las 5 consultas/reportes requeridas para MySQL
  */
 public class ConsultasService {
 
-    // ========== CONSULTA 1: Clientes Ordenados por Apellidos ==========
-    public List<Map<String, Object>> consultaClientesOrdenados() {
+    // ========== CONSULTA 1: CLIENTES Ordenados por Apellidos ==========
+    public List<Map<String, Object>> consultaCLIENTESOrdenados() {
         List<Map<String, Object>> resultados = new ArrayList<>();
         String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, " +
                 "direccion_habitual, direccion_envio FROM CLIENTES " +
@@ -24,13 +24,19 @@ public class ConsultasService {
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
 
+            // Archivo: com.remus.service.ConsultasService.java
+
+// ... (en el método consultaCLIENTESOrdenados)
+
             while (rs.next()) {
                 Map<String, Object> fila = new LinkedHashMap<>();
                 fila.put("ID", rs.getInt("id_cliente"));
                 fila.put("Nombre", rs.getString("nombre"));
                 fila.put("Apellidos", rs.getString("apellidos"));
                 fila.put("DNI", rs.getString("dni"));
-                fila.put("Teléfono", rs.getInt("telefono"));
+                // CORRECCIÓN: Usar getString ya que el campo Teléfono en MySQL es VARCHAR/TEXT
+                // Aunque el modelo sea Integer, la consulta lo obtiene como texto para evitar errores de tipo
+                fila.put("Teléfono", rs.getString("telefono"));
                 fila.put("Dir. Habitual", rs.getString("direccion_habitual"));
                 fila.put("Dir. Envío", rs.getString("direccion_envio"));
                 resultados.add(fila);
@@ -41,8 +47,8 @@ public class ConsultasService {
         return resultados;
     }
 
-    // ========== CONSULTA 2: Productos Ordenados por Descripción ==========
-    public List<Map<String, Object>> consultaProductosOrdenados() {
+    // ========== CONSULTA 2: PRODUCTOS Ordenados por Descripción ==========
+    public List<Map<String, Object>> consultaPRODUCTOSOrdenados() {
         List<Map<String, Object>> resultados = new ArrayList<>();
         String sql = "SELECT id_producto, codigo, descripcion, precio_recomendado, stock " +
                 "FROM PRODUCTOS WHERE activo = 1 ORDER BY descripcion";
@@ -66,9 +72,9 @@ public class ConsultasService {
         return resultados;
     }
 
-    // ========== CONSULTA 3: Ventas con Subreporte de Líneas ==========
-    public Map<Integer, Map<String, Object>> consultaVentasConLineas() {
-        Map<Integer, Map<String, Object>> ventas = new LinkedHashMap<>();
+    // ========== CONSULTA 3: VENTAS con Subreporte de Líneas ==========
+    public Map<Integer, Map<String, Object>> consultaVENTASConLineas() {
+        Map<Integer, Map<String, Object>> VENTAS = new LinkedHashMap<>();
         String sql = "SELECT v.id_venta, v.fecha_venta, c.id_cliente, c.nombre, c.apellidos, " +
                 "v.descuento_global, v.importe_total, lv.id_linea, p.codigo, p.descripcion, " +
                 "lv.cantidad, lv.precio_venta, lv.descuento_linea, lv.importe_linea " +
@@ -86,7 +92,7 @@ public class ConsultasService {
                 int idVenta = rs.getInt("id_venta");
 
                 // Crear entrada principal de venta si no existe
-                if (!ventas.containsKey(idVenta)) {
+                if (!VENTAS.containsKey(idVenta)) {
                     Map<String, Object> venta = new LinkedHashMap<>();
                     venta.put("ID Venta", idVenta);
                     venta.put("Fecha", rs.getString("fecha_venta"));
@@ -94,7 +100,7 @@ public class ConsultasService {
                     venta.put("Descuento Global", rs.getDouble("descuento_global") + "%");
                     venta.put("Importe Total", String.format("%.2f €", rs.getDouble("importe_total")));
                     venta.put("Líneas", new ArrayList<>());
-                    ventas.put(idVenta, venta);
+                    VENTAS.put(idVenta, venta);
                 }
 
                 // Agregar línea si existe
@@ -109,21 +115,21 @@ public class ConsultasService {
 
                     @SuppressWarnings("unchecked")
                     List<Map<String, Object>> lineas =
-                            (List<Map<String, Object>>) ventas.get(idVenta).get("Líneas");
+                            (List<Map<String, Object>>) VENTAS.get(idVenta).get("Líneas");
                     lineas.add(linea);
                 }
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error en Consulta 3: " + e.getMessage(), e);
         }
-        return ventas;
+        return VENTAS;
     }
 
-    // ========== CONSULTA 4: Resumen de Ventas por Rango de Fechas ==========
-    public Map<String, Object> consultaResumenVentas(LocalDate fechaInicio, LocalDate fechaFin) {
+    // ========== CONSULTA 4: Resumen de VENTAS por Rango de Fechas ==========
+    public Map<String, Object> consultaResumenVENTAS(LocalDate fechaInicio, LocalDate fechaFin) {
         Map<String, Object> resumen = new LinkedHashMap<>();
         String sql = "SELECT " +
-                "COUNT(DISTINCT id_venta) AS num_ventas, " +
+                "COUNT(DISTINCT id_venta) AS num_VENTAS, " +
                 "SUM(importe_total) AS volumen_total, " +
                 "AVG(importe_total) AS promedio_venta, " +
                 "MAX(importe_total) AS venta_maxima, " +
@@ -140,11 +146,15 @@ public class ConsultasService {
 
             if (rs.next()) {
                 resumen.put("Período", fechaInicio + " a " + fechaFin);
-                resumen.put("Número de Ventas", rs.getInt("num_ventas"));
-                resumen.put("Volumen Total", String.format("%.2f €", rs.getDouble("volumen_total")));
-                resumen.put("Promedio por Venta", String.format("%.2f €", rs.getDouble("promedio_venta")));
-                resumen.put("Venta Máxima", String.format("%.2f €", rs.getDouble("venta_maxima")));
-                resumen.put("Venta Mínima", String.format("%.2f €", rs.getDouble("venta_minima")));
+                resumen.put("Número de VENTAS", rs.getInt("num_VENTAS"));
+                double volumen = rs.getDouble("volumen_total");
+                resumen.put("Volumen Total", String.format("%.2f €", volumen));
+                double promedio = rs.getDouble("promedio_venta");
+                resumen.put("Promedio por Venta", String.format("%.2f €", promedio));
+                double maxima = rs.getDouble("venta_maxima");
+                resumen.put("Venta Máxima", String.format("%.2f €", maxima));
+                double minima = rs.getDouble("venta_minima");
+                resumen.put("Venta Mínima", String.format("%.2f €", minima));
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error en Consulta 4: " + e.getMessage(), e);
@@ -152,14 +162,14 @@ public class ConsultasService {
         return resumen;
     }
 
-    // ========== CONSULTA 5: Ventas por Cliente en Rango de Fechas ==========
-    public List<Map<String, Object>> consultaVentasPorCliente(LocalDate fechaInicio, LocalDate fechaFin) {
+    // ========== CONSULTA 5: VENTAS por Cliente en Rango de Fechas ==========
+    public List<Map<String, Object>> consultaVENTASPorCliente(LocalDate fechaInicio, LocalDate fechaFin) {
         List<Map<String, Object>> resultados = new ArrayList<>();
         String sql = "SELECT " +
                 "c.id_cliente, " +
-                "c.nombre || ' ' || c.apellidos AS cliente, " +
+                "CONCAT(c.nombre, ' ', c.apellidos) AS cliente, " +
                 "c.dni, " +
-                "COUNT(v.id_venta) AS num_ventas, " +
+                "COUNT(v.id_venta) AS num_VENTAS, " +
                 "SUM(v.importe_total) AS volumen_total, " +
                 "AVG(v.importe_total) AS promedio_venta, " +
                 "MAX(v.importe_total) AS venta_maxima, " +
@@ -183,11 +193,15 @@ public class ConsultasService {
                 Map<String, Object> fila = new LinkedHashMap<>();
                 fila.put("Cliente", rs.getString("cliente"));
                 fila.put("DNI", rs.getString("dni"));
-                fila.put("Num. Ventas", rs.getInt("num_ventas"));
-                fila.put("Volumen Total", String.format("%.2f €", rs.getDouble("volumen_total")));
-                fila.put("Promedio", String.format("%.2f €", rs.getDouble("promedio_venta")));
-                fila.put("Venta Máx.", String.format("%.2f €", rs.getDouble("venta_maxima")));
-                fila.put("Venta Mín.", String.format("%.2f €", rs.getDouble("venta_minima")));
+                fila.put("Num. VENTAS", rs.getInt("num_VENTAS"));
+                double volumen = rs.getDouble("volumen_total");
+                fila.put("Volumen Total", String.format("%.2f €", volumen));
+                double promedio = rs.getDouble("promedio_venta");
+                fila.put("Promedio", String.format("%.2f €", promedio));
+                double maxima = rs.getDouble("venta_maxima");
+                fila.put("Venta Máx.", String.format("%.2f €", maxima));
+                double minima = rs.getDouble("venta_minima");
+                fila.put("Venta Mín.", String.format("%.2f €", minima));
                 resultados.add(fila);
             }
         } catch (SQLException e) {

@@ -11,5 +11,6 @@ public interface IProductoDAO {
     boolean insertar(Producto producto);
     boolean actualizar(Producto producto);
     boolean eliminar(int idProducto);
+    boolean actualizarStock(int idProducto, int nuevoStock);
 }
 

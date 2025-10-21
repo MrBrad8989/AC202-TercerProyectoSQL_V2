@@ -174,7 +174,7 @@ public class MainConsole {
         while (true) {
             try {
                 System.out.print(msg);
-                return Double.parseDouble(sc.nextLine().trim());
+                return NumberParser.parsePrecio(sc.nextLine().trim());
             } catch (NumberFormatException e) {
                 System.out.println("Por favor ingrese un número válido (decimal).");
             }

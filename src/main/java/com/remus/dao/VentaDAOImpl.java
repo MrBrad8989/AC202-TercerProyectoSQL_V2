@@ -18,7 +18,7 @@ public class VentaDAOImpl implements IVentaDAO {
 
     @Override
     public Venta obtenerPorId(int idVenta) {
-        String sql = "SELECT id_venta, id_cliente, fecha_venta, importe_total FROM ventas WHERE id_venta = ?";
+        String sql = "SELECT id_venta, id_cliente, fecha_venta, importe_total FROM VENTAS WHERE id_venta = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, idVenta);
@@ -26,7 +26,7 @@ public class VentaDAOImpl implements IVentaDAO {
 
             if (rs.next()) {
                 Venta venta = mapearVenta(rs);
-                venta.setLineasVenta(lineaVentaDAO.obtenerPorVenta(idVenta)); // obtener las líneas asociadas
+                venta.setLineasVenta(lineaVentaDAO.obtenerPorVenta(idVenta));
                 return venta;
             }
             return null;
@@ -38,7 +38,7 @@ public class VentaDAOImpl implements IVentaDAO {
     @Override
     public List<Venta> obtenerTodas() {
         List<Venta> ventas = new ArrayList<>();
-        String sql = "SELECT id_venta, id_cliente, fecha_venta, importe_total FROM ventas ORDER BY fecha_venta DESC";
+        String sql = "SELECT id_venta, id_cliente, fecha_venta, importe_total FROM VENTAS ORDER BY fecha_venta DESC";
 
         try (Statement stmt = ConexionBD.getConexion().createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -57,7 +57,7 @@ public class VentaDAOImpl implements IVentaDAO {
     @Override
     public List<Venta> obtenerPorCliente(int idCliente) {
         List<Venta> ventas = new ArrayList<>();
-        String sql = "SELECT id_venta, id_cliente, fecha_venta, importe_total FROM ventas WHERE id_cliente = ? ORDER BY fecha_venta DESC";
+        String sql = "SELECT id_venta, id_cliente, fecha_venta, importe_total FROM VENTAS WHERE id_cliente = ? ORDER BY fecha_venta DESC";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, idCliente);
@@ -76,7 +76,7 @@ public class VentaDAOImpl implements IVentaDAO {
 
     @Override
     public boolean insertar(Venta venta) {
-        String sql = "INSERT INTO ventas (id_cliente, fecha_venta, importe_total) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO VENTAS (id_cliente, fecha_venta, importe_total) VALUES (?, ?, ?)";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             pstmt.setInt(1, venta.getCliente().getIdCliente());
@@ -109,7 +109,7 @@ public class VentaDAOImpl implements IVentaDAO {
 
     @Override
     public boolean actualizar(Venta venta) {
-        String sql = "UPDATE ventas SET id_cliente = ?, fecha_venta = ?, importe_total = ? WHERE id_venta = ?";
+        String sql = "UPDATE VENTAS SET id_cliente = ?, fecha_venta = ?, importe_total = ? WHERE id_venta = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, venta.getCliente().getIdCliente());
@@ -137,7 +137,7 @@ public class VentaDAOImpl implements IVentaDAO {
 
     @Override
     public boolean eliminar(int idVenta) {
-        String sql = "DELETE FROM ventas WHERE id_venta = ?";
+        String sql = "DELETE FROM VENTAS WHERE id_venta = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, idVenta);
@@ -151,17 +151,56 @@ public class VentaDAOImpl implements IVentaDAO {
         }
     }
 
+    public boolean actualizarEstado(int idVenta, String nuevoEstado) {
+        String sql = "UPDATE VENTAS SET ESTADO = ? WHERE id_venta = ?";
+
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setString(1, nuevoEstado);
+            pstmt.setInt(2, idVenta);
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al actualizar estado de la venta: " + e.getMessage(), e);
+        }
+    }
+
+    public double calcularImporteTotal(int idVenta) {
+        String sql = "SELECT SUM(IMPORTE_LINEA) as total FROM LINEAS_VENTA WHERE ID_VENTA = ?";
+
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setInt(1, idVenta);
+            ResultSet rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                double total = rs.getDouble("total");
+                // actualizar en la tabla ventas
+                String update = "UPDATE VENTAS SET IMPORTE_TOTAL = ? WHERE id_venta = ?";
+                try (PreparedStatement up = ConexionBD.getConexion().prepareStatement(update)) {
+                    up.setDouble(1, total);
+                    up.setInt(2, idVenta);
+                    up.executeUpdate();
+                }
+                return total;
+            }
+            return 0.0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al calcular importe total de la venta: " + e.getMessage(), e);
+        }
+    }
+
     /**
      * Mapea un ResultSet a un objeto Venta
      */
     private Venta mapearVenta(ResultSet rs) throws SQLException {
         Venta v = new Venta();
         v.setIdVenta(rs.getInt("id_venta"));
+
         int idCliente = rs.getInt("id_cliente");
         Cliente cliente = clienteDAO.obtenerPorCod(idCliente);
         v.setCliente(cliente);
+
         v.setFechaVenta(rs.getDate("fecha_venta").toLocalDate());
         v.setImporteTotal(rs.getDouble("importe_total"));
+
         return v;
     }
 }
