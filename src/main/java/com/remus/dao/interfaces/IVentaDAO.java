@@ -10,6 +10,4 @@ public interface IVentaDAO {
     boolean insertar(Venta venta);
     boolean actualizar(Venta venta);
     boolean eliminar(int idVenta);
-    boolean actualizarEstado(int idVenta, String nuevoEstado);
-    double calcularImporteTotal(int idVenta);
 }

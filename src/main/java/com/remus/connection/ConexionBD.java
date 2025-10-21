@@ -3,41 +3,38 @@ package com.remus.connection;
 import java.sql.*;
 
 /**
- * Clase para gestionar la conexión a la base de datos SQLite
+ * Clase para gestionar la conexión a la base de datos MySQL
  */
 public class ConexionBD {
 
-    // Ruta de la base de datos SQLite
-    private static final String DB_PATH = "AC202.db";
-    private static final String URL = "jdbc:sqlite:" + DB_PATH;
+    // Ruta de la base de datos MySQL
+    private static final String URL = "jdbc:mysql://localhost:3306/AC202?useSSL=false&serverTimezone=UTC";
+    private static final String USER = "alumno";
+    private static final String PASSWORD = "alumno";
 
     // Pool simple de conexión (singleton)
     private static Connection conexionActual = null;
 
     /**
-     * Obtiene una conexión a la base de datos SQLite
+     * Obtiene una conexión a la base de datos MySQL
      * @return Connection objeto de conexión
      * @throws SQLException si hay error en la conexión
      */
     public static Connection getConexion() throws SQLException {
         try {
-            // Cargar el driver de SQLite (opcional en versiones nuevas de JDBC)
-            Class.forName("org.sqlite.JDBC");
+            // Cargar el driver de MySQL
+            Class.forName("com.mysql.cj.jdbc.Driver");
 
             // Si no hay conexión o está cerrada, crear nueva
             if (conexionActual == null || conexionActual.isClosed()) {
-                conexionActual = DriverManager.getConnection(URL);
-                // Habilitar foreign keys en SQLite
-                try (Statement stmt = conexionActual.createStatement()) {
-                    stmt.execute("PRAGMA foreign_keys = ON;");
-                }
-                System.out.println("✓ Conexión establecida a: " + DB_PATH);
+                conexionActual = DriverManager.getConnection(URL, USER, PASSWORD);
+                System.out.println("✓ Conexión establecida a MySQL en: " + URL);
             }
 
             return conexionActual;
 
         } catch (ClassNotFoundException e) {
-            throw new SQLException("Driver SQLite no encontrado: " + e.getMessage(), e);
+            throw new SQLException("Driver MySQL no encontrado: " + e.getMessage(), e);
         }
     }
 
@@ -120,9 +117,10 @@ public class ConexionBD {
              Statement stmt = conn.createStatement()) {
 
             System.out.println("\n=== INFORMACIÓN DE LA BASE DE DATOS ===");
-            System.out.println("Base de datos: " + DB_PATH);
 
             DatabaseMetaData metaData = conn.getMetaData();
+            System.out.println("URL: " + metaData.getURL());
+            System.out.println("Base de datos: " + conn.getCatalog());
             System.out.println("Driver: " + metaData.getDriverName());
             System.out.println("Versión: " + metaData.getDriverVersion());
 
@@ -154,7 +152,7 @@ public class ConexionBD {
             java.nio.file.Path path = java.nio.file.Paths.get(rutaScript);
             String script = new String(java.nio.file.Files.readAllBytes(path));
 
-            // Dividir en sentencias individuales (básico)
+            // Dividir en sentencias individuales
             String[] sentencias = script.split(";");
 
             for (String sentencia : sentencias) {
@@ -177,7 +175,7 @@ public class ConexionBD {
      */
     public static void main(String[] args) {
         try {
-            System.out.println("Probando conexión a SQLite...");
+            System.out.println("Probando conexión a MySQL...");
             Connection conn = ConexionBD.getConexion();
 
             if (conn != null && !conn.isClosed()) {

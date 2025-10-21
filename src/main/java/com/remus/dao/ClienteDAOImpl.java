@@ -14,7 +14,7 @@ import java.util.List;
 public class ClienteDAOImpl implements IClienteDAO {
 
         public Cliente obtenerPorCod(int idCli) {
-            String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo FROM CLIENTES WHERE id_cliente = ?";
+            String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes WHERE id_cliente = ?";
 
             try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
                 pstmt.setLong(1, idCli);
@@ -32,7 +32,7 @@ public class ClienteDAOImpl implements IClienteDAO {
     @Override
         public List<Cliente> obtenerTodos() {
             List<Cliente> Clientes = new ArrayList<>();
-            String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo FROM CLIENTES ORDER BY id_cliente";
+            String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes ORDER BY id_cliente";
 
             try (Statement stmt = ConexionBD.getConexion().createStatement();
                  ResultSet rs = stmt.executeQuery(sql)) {
@@ -47,32 +47,30 @@ public class ClienteDAOImpl implements IClienteDAO {
         }
 
     @Override
-        public boolean insertar(Cliente Cliente) {
-            String sql = "INSERT INTO CLIENTES (id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, TRUE)";
+    public boolean insertar(Cliente Cliente) {
+        String sql = "INSERT INTO clientes (dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio) VALUES (?, ?, ?, ?, ?, ?)";
 
-            try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
-                pstmt.setLong(1, Cliente.getIdCliente());
-                pstmt.setString(2, Cliente.getNombre());
-                pstmt.setString(3, Cliente.getApellidos());
-                pstmt.setString(4, Cliente.getDni());
-                pstmt.setInt(5, Cliente.getTelefono());
-                pstmt.setString(6, Cliente.getDireccionHabitual());
-                pstmt.setString(7, Cliente.getDireccionEnvio());
-
-                return pstmt.executeUpdate() > 0;
-            } catch (SQLException e) {
-                throw new RuntimeException("Error al insertar Cliente: " + e.getMessage(), e);
-            }
+        try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
+            pstmt.setString(1, Cliente.getDni());
+            pstmt.setString(2, Cliente.getNombre());
+            pstmt.setString(3, Cliente.getApellidos());
+            pstmt.setInt(4, Cliente.getTelefono());
+            pstmt.setString(5, Cliente.getDireccionHabitual());
+            pstmt.setString(6, Cliente.getDireccionEnvio());
+            return pstmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al insertar Cliente: " + e.getMessage(), e);
         }
+    }
 
         @Override
         public boolean actualizar(Cliente Cliente) {
-            String sql = "UPDATE CLIENTES SET nombre = ?, apellidos = ?, dni = ?, telefono = ?, direccion_habitual = ?, direccion_envio = ?  WHERE id_cliente = ?";
+            String sql = "UPDATE clientes SET dni = ?, nombre = ?, apellidos = ?, telefono = ?, direccion_habitual = ?, direccion_envio = ? WHERE id_cliente = ?";
 
             try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
-                pstmt.setString(1, Cliente.getNombre());
-                pstmt.setString(2, Cliente.getApellidos());
-                pstmt.setString(3, Cliente.getDni());
+                pstmt.setString(1, Cliente.getDni());
+                pstmt.setString(2, Cliente.getNombre());
+                pstmt.setString(3, Cliente.getApellidos());
                 pstmt.setInt(4, Cliente.getTelefono());
                 pstmt.setString(5, Cliente.getDireccionHabitual());
                 pstmt.setString(6, Cliente.getDireccionEnvio());
@@ -86,7 +84,7 @@ public class ClienteDAOImpl implements IClienteDAO {
 
         @Override
         public boolean eliminar(int idCli) {
-            String sql = "DELETE FROM CLIENTES WHERE id_cliente = ?";
+            String sql = "DELETE FROM clientes WHERE id_cliente = ?";
 
             try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
                 pstmt.setInt(1, idCli);
@@ -98,7 +96,7 @@ public class ClienteDAOImpl implements IClienteDAO {
 
         @Override
         public Cliente obtenerPorNombre(String nombreCli) {
-            String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo FROM CLIENTES WHERE nombre = ?";
+            String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes WHERE nombre = ?";
 
             try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
                 pstmt.setString(1, nombreCli);
@@ -115,7 +113,7 @@ public class ClienteDAOImpl implements IClienteDAO {
 
     @Override
     public Cliente obtenerPorDNI(String dniCli) {
-        String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo FROM CLIENTES WHERE dni = ?";
+        String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes WHERE dni = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setString(1, dniCli);
@@ -133,7 +131,7 @@ public class ClienteDAOImpl implements IClienteDAO {
     @Override
         public List<Cliente> obtenerPorApellidos(String apellidos) {
             List<Cliente> Clientes = new ArrayList<>();
-            String sql = "SELECT id_cliente, nombre, apellidos, dni, telefono, direccion_habitual, direccion_envio, fecha_registro, activo FROM CLIENTES WHERE apellidos = ?";
+            String sql = "SELECT id_cliente, dni, nombre, apellidos, telefono, direccion_habitual, direccion_envio FROM clientes WHERE apellidos = ?";
 
             try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
                 pstmt.setString(1, apellidos);
@@ -150,7 +148,7 @@ public class ClienteDAOImpl implements IClienteDAO {
 
         @Override
         public boolean actualizarApellidos(String nombreCli, String nuevaApellidos) {
-            String sql = "UPDATE CLIENTES SET apellidos = ? WHERE nombre = ?";
+            String sql = "UPDATE clientes SET apellidos = ? WHERE nombre = ?";
 
             try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
                 pstmt.setString(1, nuevaApellidos);
@@ -163,7 +161,7 @@ public class ClienteDAOImpl implements IClienteDAO {
 
         @Override
         public int contarClientes(int idCli) {
-            String sql = "SELECT COUNT(*) as total FROM CLIENTES WHERE id_cliente = ?";
+            String sql = "SELECT COUNT(*) as total FROM clientes WHERE id_cliente = ?";
 
             try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
                 pstmt.setInt(1, idCli);
@@ -183,15 +181,15 @@ public class ClienteDAOImpl implements IClienteDAO {
          */
         private Cliente mapearCliente(ResultSet rs) throws SQLException {
             return new Cliente(
-                    rs.getInt("id_cliente"),
-                    rs.getString("nombre"),
-                    rs.getString("apellidos"),
-                    rs.getString("dni"),
-                    rs.getInt("telefono"),
-                    rs.getString("direccion_habitual"),
-                    rs.getString("direccion_envio"),
-                    rs.getTimestamp("fecha_registro").toLocalDateTime(),
-                    rs.getBoolean("activo")
+                rs.getInt("id_cliente"),
+                rs.getString("dni"),
+                rs.getString("nombre"),
+                rs.getString("apellidos"),
+                rs.getInt("telefono"),
+                rs.getString("direccion_habitual"),
+                rs.getString("direccion_envio"),
+                null, // fecha_registro
+                null  // activo
             );
         }
     }

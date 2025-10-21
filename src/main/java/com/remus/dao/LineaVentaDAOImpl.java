@@ -12,7 +12,7 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
 
     @Override
     public LineaVenta obtenerPorId(int idLinea) {
-        String sql = "SELECT * FROM LINEAS_VENTA WHERE id_linea = ?";
+        String sql = "SELECT id_linea, id_venta, id_producto, cantidad, precio_venta, descuento, importe_linea FROM lineas_venta WHERE id_linea = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, idLinea);
@@ -30,7 +30,7 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
     @Override
     public List<LineaVenta> obtenerPorVenta(int idVenta) {
         List<LineaVenta> lineas = new ArrayList<>();
-        String sql = "SELECT * FROM LINEAS_VENTA WHERE id_venta = ? ORDER BY id_linea";
+        String sql = "SELECT id_linea, id_venta, id_producto, cantidad, precio_venta, descuento, importe_linea FROM lineas_venta WHERE id_venta = ? ORDER BY id_linea";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, idVenta);
@@ -47,9 +47,7 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
 
     @Override
     public boolean insertar(LineaVenta lineaVenta) {
-        // Usar la columna correcta descuento_linea
-        String sql = "INSERT INTO LINEAS_VENTA (id_venta, id_producto, cantidad, precio_venta, descuento_linea, importe_linea) " +
-                "VALUES (?, ?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO lineas_venta (id_venta, id_producto, cantidad, precio_venta, descuento, importe_linea) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, lineaVenta.getIdVenta());
@@ -67,9 +65,7 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
 
     @Override
     public boolean actualizar(LineaVenta lineaVenta) {
-        // Usar la columna correcta descuento_linea
-        String sql = "UPDATE LINEAS_VENTA SET id_venta = ?, id_producto = ?, cantidad = ?, precio_venta = ?, descuento_linea = ?, importe_linea = ? " +
-                "WHERE id_linea = ?";
+        String sql = "UPDATE lineas_venta SET id_venta = ?, id_producto = ?, cantidad = ?, precio_venta = ?, descuento = ?, importe_linea = ? WHERE id_linea = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, lineaVenta.getIdVenta());
@@ -88,7 +84,7 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
 
     @Override
     public boolean eliminar(int idLinea) {
-        String sql = "DELETE FROM LINEAS_VENTA WHERE id_linea = ?";
+        String sql = "DELETE FROM lineas_venta WHERE id_linea = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, idLinea);
@@ -100,7 +96,7 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
 
     @Override
     public boolean eliminarPorVenta(int idVenta) {
-        String sql = "DELETE FROM LINEAS_VENTA WHERE id_venta = ?";
+        String sql = "DELETE FROM lineas_venta WHERE id_venta = ?";
 
         try (PreparedStatement pstmt = ConexionBD.getConexion().prepareStatement(sql)) {
             pstmt.setInt(1, idVenta);
@@ -121,7 +117,7 @@ public class LineaVentaDAOImpl implements ILineaVentaDAO {
         lv.setIdProducto(rs.getInt("id_producto"));
         lv.setCantidad(rs.getInt("cantidad"));
         lv.setPrecioVenta(rs.getDouble("precio_venta"));
-        lv.setDescuento(rs.getInt("descuento_linea"));
+        lv.setDescuento(rs.getInt("descuento"));
         lv.setImporteLinea(rs.getDouble("importe_linea"));
         return lv;
     }
