@@ -1,4 +1,4 @@
-package com.remus.utility;
+package com.remus.vista;
 
 import com.remus.dao.ClienteDAOImpl;
 import com.remus.dao.EmpresaDAOImpl;
@@ -12,6 +12,7 @@ import com.remus.modelo.Cliente;
 import com.remus.modelo.Empresa;
 import com.remus.modelo.Producto;
 import com.remus.modelo.Venta;
+import com.remus.utility.NumberParser;
 
 import java.util.List;
 import java.util.Scanner;
