@@ -10,4 +10,5 @@ public interface IVentaDAO {
     boolean insertar(Venta venta);
     boolean actualizar(Venta venta);
     boolean eliminar(int idVenta);
+    int insertarConLineas(Venta venta) throws Exception;
 }
