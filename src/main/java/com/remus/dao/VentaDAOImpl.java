@@ -191,88 +191,134 @@ public class VentaDAOImpl implements IVentaDAO {
     public int insertarConLineas(Venta venta) throws Exception {
         String sqlVenta = "INSERT INTO VENTAS (id_cliente, fecha_venta, descuento_global, importe_total, observaciones, estado) VALUES (?, ?, ?, ?, ?, ?)";
         String sqlLinea = "INSERT INTO LINEAS_VENTA (id_venta, id_producto, cantidad, precio_venta, descuento_linea, importe_linea) VALUES (?, ?, ?, ?, ?, ?)";
+        // SQL para actualizar el total final
+        String sqlUpdateTotal = "UPDATE VENTAS SET importe_total = ? WHERE id_venta = ?";
 
         Connection con = null;
         PreparedStatement pstmtVenta = null;
         PreparedStatement pstmtLinea = null;
-        ResultSet rs = null;
+        PreparedStatement pstmtUpdate = null; // Para actualizar total
+        ResultSet rsKeys = null;
 
         try {
             con = ConexionBD.getConexion();
-            con.setAutoCommit(false);
+            con.setAutoCommit(false); // Iniciar transacción
 
-            // Calcular importes de líneas y total
-            double totalLineas = 0.0;
-            if (venta.getLineasVenta() != null) {
-                for (LineaVenta linea : venta.getLineasVenta()) {
-                    int cantidad = linea.getCantidad() != null ? linea.getCantidad() : 0;
-                    double precio = linea.getPrecioVenta() != null ? linea.getPrecioVenta() : 0.0;
-                    int desc = linea.getDescuento() != null ? linea.getDescuento() : 0;
-                    double subtotal = cantidad * precio;
-                    double importeLinea = subtotal - (subtotal * desc / 100.0);
-                    linea.setImporteLinea(importeLinea);
-                    totalLineas += importeLinea;
-                }
-            }
-
-            double descuentoGlobal = venta.getDescuentoGlobal() != null ? venta.getDescuentoGlobal() : 0.0;
-            double totalConDescuento = totalLineas - (totalLineas * descuentoGlobal / 100.0);
-
-            // Insertar venta con el importe total calculado
+            // 1. Insertar la cabecera de la VENTA (con importe_total temporal a 0)
+            //    (Los campos descuento_global, observaciones, estado se usarán)
             pstmtVenta = con.prepareStatement(sqlVenta, Statement.RETURN_GENERATED_KEYS);
             pstmtVenta.setInt(1, venta.getCliente().getIdCliente());
-            pstmtVenta.setString(2, venta.getFechaVenta() != null ? venta.getFechaVenta().toString() : null);
-            pstmtVenta.setDouble(3, descuentoGlobal);
-            pstmtVenta.setDouble(4, totalConDescuento);
+            pstmtVenta.setString(2, venta.getFechaVenta() != null ? venta.getFechaVenta().toString() : LocalDate.now().toString());
+            pstmtVenta.setDouble(3, venta.getDescuentoGlobal() != null ? venta.getDescuentoGlobal() : 0.0);
+            pstmtVenta.setDouble(4, 0.0); // Importe total temporal
             pstmtVenta.setString(5, venta.getObservaciones() != null ? venta.getObservaciones() : "");
             pstmtVenta.setString(6, venta.getEstado() != null ? venta.getEstado() : "COMPLETADA");
 
-            int filas = pstmtVenta.executeUpdate();
-            if (filas == 0) {
-                con.rollback();
-                throw new SQLException("No se pudo insertar la venta");
+            int filasVenta = pstmtVenta.executeUpdate();
+            if (filasVenta == 0) {
+                throw new SQLException("No se pudo insertar la cabecera de la venta.");
             }
 
-            rs = pstmtVenta.getGeneratedKeys();
-            if (!rs.next()) {
-                con.rollback();
-                throw new SQLException("No se pudo obtener el ID generado de la venta");
+            // Obtener el ID generado para la venta
+            rsKeys = pstmtVenta.getGeneratedKeys();
+            if (!rsKeys.next()) {
+                throw new SQLException("No se pudo obtener el ID generado de la venta.");
             }
-            int idVentaGenerada = rs.getInt(1);
-            venta.setIdVenta(idVentaGenerada);
+            int idVentaGenerada = rsKeys.getInt(1);
+            venta.setIdVenta(idVentaGenerada); // Actualizar el objeto Venta con su ID
 
-            // Insertar líneas
-            if (venta.getLineasVenta() != null) {
+            // 2. Insertar todas las LINEAS_VENTA asociadas y acumular total de líneas
+            double totalLineasInsertadas = 0.0;
+            if (venta.getLineasVenta() != null && !venta.getLineasVenta().isEmpty()) {
                 pstmtLinea = con.prepareStatement(sqlLinea);
                 for (LineaVenta linea : venta.getLineasVenta()) {
+                    // Calcular importe_linea
+                    double subtotal = (linea.getCantidad() != null ? linea.getCantidad() : 0) *
+                            (linea.getPrecioVenta() != null ? linea.getPrecioVenta() : 0.0);
+                    double importeLineaCalculado = subtotal - (subtotal * ((linea.getDescuento() != null ? linea.getDescuento() : 0) / 100.0));
+                    linea.setImporteLinea(importeLineaCalculado); // asegurar que el objeto línea tenga el importe correcto
+
                     pstmtLinea.setInt(1, idVentaGenerada);
                     pstmtLinea.setInt(2, linea.getIdProducto());
                     pstmtLinea.setInt(3, linea.getCantidad());
                     pstmtLinea.setDouble(4, linea.getPrecioVenta());
                     pstmtLinea.setInt(5, linea.getDescuento());
-                    pstmtLinea.setDouble(6, linea.getImporteLinea());
-                    pstmtLinea.executeUpdate();
+                    pstmtLinea.setDouble(6, linea.getImporteLinea()); // usar el importe calculado
+
+                    int filasLinea = pstmtLinea.executeUpdate();
+                    if (filasLinea == 0) {
+                        // si alguna inserción de línea falla, revertimos toda la transacción
+                        con.rollback();
+                        throw new SQLException("No se pudo insertar una línea de la venta.");
+                    }
+                    // getImporteLinea() devuelve un primitivo (o fue inicializado arriba), así que simplemente sumamos
+                    totalLineasInsertadas += linea.getImporteLinea();
                 }
+            } else {
+                // Si no hay líneas, la transacción debería fallar según la lógica de negocio
+                con.rollback();
+                throw new IllegalArgumentException("La venta debe contener al menos una línea.");
             }
 
+            // 3. Calcular el importe final en Java (evitar depender de función en BD)
+            double descuentoGlobal = venta.getDescuentoGlobal() != null ? venta.getDescuentoGlobal() : 0.0;
+            double importeTotalFinal = totalLineasInsertadas - (totalLineasInsertadas * descuentoGlobal / 100.0);
+
+            // 4. Actualizar el campo importe_total de la VENTA
+            pstmtUpdate = con.prepareStatement(sqlUpdateTotal);
+            pstmtUpdate.setDouble(1, importeTotalFinal);
+            pstmtUpdate.setInt(2, idVentaGenerada);
+
+            int filasUpdate = pstmtUpdate.executeUpdate();
+            if (filasUpdate == 0) {
+                con.rollback();
+                throw new SQLException("No se pudo actualizar el importe total de la venta.");
+            }
+
+            // Si todo fue bien, confirmar la transacción
             con.commit();
-            return idVentaGenerada;
-        } catch (SQLException e) {
+            System.out.println("✓ Venta #" + idVentaGenerada + " registrada y total calculado y actualizado en BD.");
+            return idVentaGenerada; // Devolver el ID de la venta creada
+
+        } catch (Exception e) { // Captura SQLException y otras como IllegalArgumentException
             if (con != null) {
                 try {
-                    con.rollback();
-                } catch (SQLException ex) {
-                    // ignorar
+                    System.err.println("✗ Ocurrió un error, revirtiendo transacción...");
+                    con.rollback(); // Revertir cambios si algo falló
+                } catch (SQLException exRollback) {
+                    System.err.println("✗ Error al intentar revertir la transacción: " + exRollback.getMessage());
                 }
             }
-            throw new Exception("Error al insertar venta con líneas: " + e.getMessage(), e);
+            // Relanzar la excepción original para que la capa superior (Service/UI) se entere
+            throw new Exception("Error en la transacción de inserción de venta: " + e.getMessage(), e);
         } finally {
-            try { if (rs != null) rs.close(); } catch (SQLException ignored) {}
-            try { if (pstmtLinea != null) pstmtLinea.close(); } catch (SQLException ignored) {}
-            try { if (pstmtVenta != null) pstmtVenta.close(); } catch (SQLException ignored) {}
-            try { if (con != null) con.setAutoCommit(true); } catch (SQLException ignored) {}
+            // Cerrar todos los recursos en orden inverso a su apertura
+            try {
+                if (rsKeys != null) rsKeys.close();
+            } catch (SQLException ignored) {
+            }
+            try {
+                if (pstmtUpdate != null) pstmtUpdate.close();
+            } catch (SQLException ignored) {
+            }
+            try {
+                if (pstmtLinea != null) pstmtLinea.close();
+            } catch (SQLException ignored) {
+            }
+            try {
+                if (pstmtVenta != null) pstmtVenta.close();
+            } catch (SQLException ignored) {
+            }
+            try {
+                if (con != null) {
+                    con.setAutoCommit(true); // Restaurar autocommit
+                    ConexionBD.cerrarConexion(con);
+                }
+            } catch (SQLException ignored) {
+            }
         }
     }
+
 
     /**
      * Mapea un ResultSet a un objeto Venta
@@ -282,13 +328,17 @@ public class VentaDAOImpl implements IVentaDAO {
         v.setIdVenta(rs.getInt("id_venta"));
 
         int idCliente = rs.getInt("id_cliente");
-        Cliente cliente = clienteDAO.obtenerPorCod(idCliente);
+        Cliente cliente = clienteDAO.obtenerPorCod(idCliente); // Asume que clienteDAO está inicializado
         v.setCliente(cliente);
 
-        v.setFechaVenta(rs.getDate("fecha_venta").toLocalDate());
-        v.setImporteTotal(rs.getDouble("importe_total"));
+        // Asegurarse de manejar NULLs en fecha si es posible en BD
+        Date fechaSql = rs.getDate("fecha_venta");
+        v.setFechaVenta(fechaSql != null ? fechaSql.toLocalDate() : null);
+
+        // Usar getObject para manejar posibles NULLs en importe_total
+        v.setImporteTotal(rs.getObject("importe_total", Double.class));
+
 
         return v;
     }
 }
-
