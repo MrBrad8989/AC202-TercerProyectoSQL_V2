@@ -97,8 +97,14 @@ public class ConsultasService {
                     venta.put("ID Venta", idVenta);
                     venta.put("Fecha", rs.getString("fecha_venta"));
                     venta.put("Cliente", rs.getString("nombre") + " " + rs.getString("apellidos"));
-                    venta.put("Descuento Global", rs.getDouble("descuento_global") + "%");
-                    venta.put("Importe Total", String.format("%.2f €", rs.getDouble("importe_total")));
+                    // Guardamos el descuento global numérico para cálculos posteriores
+                    double descuentoGlobalNum = rs.getDouble("descuento_global");
+                    venta.put("Descuento Global", descuentoGlobalNum); // guardamos como número temporal
+                    // Guardamos importe_total tal cual viene de la BD (double)
+                    double importeBd = rs.getDouble("importe_total");
+                    venta.put("Importe Total", importeBd); // puede ser 0.0
+                    // campo auxiliar para acumular importes de líneas si BD tiene 0
+                    venta.put("_total_lineas_calc", 0.0);
                     venta.put("Líneas", new ArrayList<>());
                     VENTAS.put(idVenta, venta);
                 }
@@ -117,7 +123,45 @@ public class ConsultasService {
                     List<Map<String, Object>> lineas =
                             (List<Map<String, Object>>) VENTAS.get(idVenta).get("Líneas");
                     lineas.add(linea);
+
+                    // Acumular importe_linea en el auxiliar
+                    double impLinea = rs.getDouble("importe_linea");
+                    double acumulado = (double) VENTAS.get(idVenta).get("_total_lineas_calc");
+                    acumulado += impLinea;
+                    VENTAS.get(idVenta).put("_total_lineas_calc", acumulado);
                 }
+            }
+
+            // Después de procesar todas las filas, asegurarnos de que 'Importe Total' muestra un valor coherente
+            for (Map<String, Object> venta : VENTAS.values()) {
+                double importeBd = 0.0;
+                Object impObj = venta.get("Importe Total");
+                if (impObj instanceof Number) {
+                    importeBd = ((Number) impObj).doubleValue();
+                } else if (impObj != null) {
+                    try {
+                        importeBd = Double.parseDouble(impObj.toString().replaceAll("[^0-9\\.,-]",""));
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+
+                if (importeBd <= 0.0) {
+                    double totalLineas = (double) venta.get("_total_lineas_calc");
+                    double desc = 0.0;
+                    Object dgObj = venta.get("Descuento Global");
+                    if (dgObj instanceof Number) desc = ((Number) dgObj).doubleValue();
+                    double totalConDesc = totalLineas - (totalLineas * desc / 100.0);
+                    venta.put("Importe Total", String.format("%.2f €", totalConDesc));
+                } else {
+                    // Formatear el importe que venía de la BD
+                    venta.put("Importe Total", String.format("%.2f €", importeBd));
+                }
+                // Formatear Descuento Global para mostrar con %
+                Object dgObj2 = venta.get("Descuento Global");
+                double dgVal = 0.0;
+                if (dgObj2 instanceof Number) dgVal = ((Number) dgObj2).doubleValue();
+                venta.put("Descuento Global", String.format("%.1f%%", dgVal));
+                // eliminar campos auxiliares antes de devolver si quieres (aquí los dejamos ocultos pero no dañinos)
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error en Consulta 3: " + e.getMessage(), e);
@@ -259,3 +303,4 @@ public class ConsultasService {
         return sb.toString();
     }
 }
+

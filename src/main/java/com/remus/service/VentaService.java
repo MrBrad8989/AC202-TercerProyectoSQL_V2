@@ -151,28 +151,17 @@ public class VentaService {
                  */
             }
 
-            // *** INICIO: CUMPLIMIENTO REQUISITO 6 (Llamada a Función Almacenada) ***
-
-            // 1. LLAMAR A LA FUNCIÓN ALMACENADA DE MYSQL (R6 paso 2)
-            double totalCalculado;
-            // Usamos SELECT nombre_funcion(?) para llamar a una función que retorna un valor
-            String sqlSelectCall = "SELECT CALCULAR_TOTAL_LINEAS_VENTA(?)";
-
-            try (PreparedStatement pstmtCall = conn.prepareStatement(sqlSelectCall)) {
-                pstmtCall.setInt(1, venta.getIdVenta());
-                ResultSet rsCall = pstmtCall.executeQuery();
-
-                if (!rsCall.next()) {
-                    throw new SQLException("Error al obtener el resultado de CALCULAR_TOTAL_LINEAS_VENTA.");
-                }
-                totalCalculado = rsCall.getDouble(1); // Obtener el valor devuelto por la función (columna 1)
+            // *** CÁLCULO EN JAVA: SUMAR IMPORTES DE LÍNEAS Y APLICAR DESCUENTO GLOBAL ***
+            double totalCalculado = 0.0;
+            for (LineaVenta linea : venta.getLineasVenta()) {
+                double importeLinea = calcularImporteLinea(linea.getCantidad(), linea.getPrecioVenta(), linea.getDescuento());
+                totalCalculado += importeLinea;
             }
 
-            // 2. APLICAR DESCUENTO GLOBAL (Lógica de negocio en Java)
             double descuentoGlobal = venta.getDescuentoGlobal() != null ? venta.getDescuentoGlobal() : 0.0;
             double totalConDescuento = totalCalculado - (totalCalculado * descuentoGlobal / 100.0);
 
-            // 3. ACTUALIZAR LA VENTA CON EL RESULTADO FINAL (R6 paso 3)
+            // Actualizar importe_total en la base de datos
             String sqlUpdate = "UPDATE VENTAS SET importe_total = ? WHERE id_venta = ?";
             try (PreparedStatement pstmtUpdate = conn.prepareStatement(sqlUpdate)) {
                 pstmtUpdate.setDouble(1, totalConDescuento);
@@ -180,7 +169,8 @@ public class VentaService {
                 pstmtUpdate.executeUpdate();
             }
 
-            // *** FIN: CUMPLIMIENTO REQUISITO 6 ***
+            // Asignar el importe al objeto venta
+            venta.setImporteTotal(totalConDescuento);
 
             conn.commit();
             System.out.println("✓ Venta #" + venta.getIdVenta() + " registrada exitosamente");
@@ -225,3 +215,4 @@ public class VentaService {
         return new double[]{0, 0};
     }
 }
+
