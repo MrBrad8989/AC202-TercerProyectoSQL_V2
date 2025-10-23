@@ -15,13 +15,17 @@ import com.remus.modelo.Venta;
 import com.remus.utility.PanelGestionVentas;
 import com.remus.utility.PanelReportes;
 import com.remus.utility.NumberParser;
+import com.remus.utility.UtilidadExportar;
+import com.remus.utility.PanelConsultasSQL;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
 import java.awt.*;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 
 public class muestraGestionEmpresa extends JFrame {
 
@@ -51,6 +55,9 @@ public class muestraGestionEmpresa extends JFrame {
     // Referencia al panel de gestión de ventas para notificar recargas
     private PanelGestionVentas panelGestion;
 
+    // Referencia al frame principal (si es necesario)
+    private JFrame mainFrame;
+
     private static final Logger LOGGER = Logger.getLogger(muestraGestionEmpresa.class.getName());
 
     public muestraGestionEmpresa() {
@@ -67,6 +74,7 @@ public class muestraGestionEmpresa extends JFrame {
         panelGestion = new PanelGestionVentas(this);
         tabs.addTab("Ventas", panelGestion);
         tabs.addTab("Reportes", new PanelReportes());
+        tabs.addTab("Utilidades", crearPanelUtilidades());
 
         add(tabs);
 
@@ -75,6 +83,63 @@ public class muestraGestionEmpresa extends JFrame {
         recargarEmpresas();
         recargarProductos();
         recargarVentas();
+    }
+// ---------------- PANEL UTILIDADES ----------------
+    private JPanel crearPanelUtilidades() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        // Subpanel para Exportación (R7.3)
+        JPanel panelExport = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 10));
+        panelExport.setBorder(new TitledBorder("Exportación de Datos (JSON)"));
+
+        // Botón Exportar Clientes
+        JButton btnExportClientes = new JButton("Exportar Clientes");
+        btnExportClientes.addActionListener(e -> {
+            String fileName = JOptionPane.showInputDialog(mainFrame, "Introduce el nombre del archivo (ej: clientes.json):", "clientes.json");
+            if (fileName != null && !fileName.trim().isEmpty()) {
+                boolean ok = UtilidadExportar.exportarClientes(clienteDAO.obtenerTodos(), fileName.trim());
+                mostrarResultadoExportacion(ok, fileName.trim());
+            }
+        });
+        panelExport.add(btnExportClientes);
+
+        // Botón Exportar Productos
+        JButton btnExportProductos = new JButton("Exportar Productos");
+        btnExportProductos.addActionListener(e -> {
+            String fileName = JOptionPane.showInputDialog(mainFrame, "Introduce el nombre del archivo (ej: productos.json):", "productos.json");
+            if (fileName != null && !fileName.trim().isEmpty()) {
+                boolean ok = UtilidadExportar.exportarProductos(productoDAO.obtenerTodos(), fileName.trim());
+                mostrarResultadoExportacion(ok, fileName.trim());
+            }
+        });
+        panelExport.add(btnExportProductos);
+
+        // Botón Exportar Ventas
+        JButton btnExportVentas = new JButton("Exportar Ventas");
+        btnExportVentas.addActionListener(e -> {
+            String fileName = JOptionPane.showInputDialog(mainFrame, "Introduce el nombre del archivo (ej: ventas.json):", "ventas.json");
+            if (fileName != null && !fileName.trim().isEmpty()) {
+                boolean ok = UtilidadExportar.exportarVentas(ventaDAO.obtenerTodas(), fileName.trim());
+                mostrarResultadoExportacion(ok, fileName.trim());
+            }
+        });
+        panelExport.add(btnExportVentas);
+
+        panel.add(panelExport, BorderLayout.NORTH);
+
+        // Panel de Consultas SQL Dinámicas (R7.1)
+        panel.add(new PanelConsultasSQL(), BorderLayout.CENTER);
+
+        return panel;
+    }
+
+    private void mostrarResultadoExportacion(boolean ok, String fileName) {
+        if (ok) {
+            JOptionPane.showMessageDialog(mainFrame, "Datos exportados correctamente a " + fileName, "Éxito", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(mainFrame, "No se pudo exportar los datos. Revisa la consola o logs.", "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     // ---------------- PANEL CLIENTES ----------------
